@@ -1,0 +1,2977 @@
+------- FILE bad_apple.asm LEVEL 1 PASS 2
+      1  10000 ????						;########################################################################
+      2  10000 ????						;   ____	     _			      _      
+      3  10000 ????						;  |  _ \	    | |     /\		     | |     
+      4  10000 ????						;  | |_) | __ _  __| |    /  \   _ __	_ __ | | ___ 
+      5  10000 ????						;  |  _ < / _` |/ _` |   / /\ \ | '_ \| '_ \| |/ _ \
+      6  10000 ????						;  | |_) | (_| | (_| |  / ____ \| |_) | |_) | |  __/
+      7  10000 ????						;  |____/ \__,_|\__,_| /_/    \_\ .__/| .__/|_|\___|
+      8  10000 ????						;				 | |   | |	     
+      9  10000 ????						;				 |_|   |_|		  
+     10  10000 ????						;########################################################################
+     11  10000 ????
+     12  10000 ????						;------------------------------------------------------------------------
+     13  10000 ????						;  ___ 	_	  _	   
+     14  10000 ????						; |_ _|_ _  __| |_  _ __| |___ ___
+     15  10000 ????						;  | || ' \/ _| | || / _` / -_|_-<
+     16  10000 ????						; |___|_||_\__|_|\_,_\__,_\___/__/
+     17  10000 ????						;				   
+     18  10000 ????						;------------------------------------------------------------------------
+     19  10000 ????
+     20  10000 ????				       processor	6502
+------- FILE vcs.h LEVEL 2 PASS 2
+      0  10000 ????				       include	"vcs.h"
+      1  10000 ????						; VCS.H
+      2  10000 ????						; Version 1.06, 06/SEP/2020
+      3  10000 ????
+      4  10000 ????		00 6a	    VERSION_VCS =	106
+      5  10000 ????
+      6  10000 ????						; THIS IS *THE* "STANDARD" VCS.H
+      7  10000 ????						; THIS FILE IS EXPLICITLY SUPPORTED AS A DASM-PREFERRED COMPANION FILE
+      8  10000 ????						; The latest version can be found at https://dasm-assembler.github.io/
+      9  10000 ????						;
+     10  10000 ????						; This file defines hardware registers and memory mapping for the
+     11  10000 ????						; Atari 2600. It is distributed as a companion machine-specific support package
+     12  10000 ????						; for the DASM compiler. Updates to this file, DASM, and associated tools are
+     13  10000 ????						; available at at https://dasm-assembler.github.io/
+     14  10000 ????						;
+     15  10000 ????						; Many thanks to the people who have contributed. If you find an issue with the
+     16  10000 ????						; contents, or would like ot add something, please report as an issue at...
+     17  10000 ????						; https://github.com/dasm-assembler/dasm/issues
+     18  10000 ????
+     19  10000 ????						;
+     20  10000 ????						; Latest Revisions...
+     21  10000 ????						; 1.06  05/SEP/2020	 Modified header/license and links to new versions
+     22  10000 ????						; 1.05  13/NOV/2003	  - Correction to 1.04 - now functions as requested by MR.
+     23  10000 ????						;			  - Added VERSION_VCS equate (which will reflect 100x version #)
+     24  10000 ????						;			    This will allow conditional code to verify VCS.H being
+     25  10000 ????						;			    used for code assembly.
+     26  10000 ????						; 1.04  12/NOV/2003	 Added TIA_BASE_WRITE_ADDRESS and TIA_BASE_READ_ADDRESS for
+     27  10000 ????						;			 convenient disassembly/reassembly compatibility for hardware
+     28  10000 ????						;			 mirrored reading/writing differences.	This is more a
+     29  10000 ????						;			 readability issue, and binary compatibility with disassembled
+     30  10000 ????						;			 and reassembled sources.  Per Manuel Rotschkar's suggestion.
+     31  10000 ????						; 1.03  12/MAY/2003	 Added SEG segment at end of file to fix old-code compatibility
+     32  10000 ????						;			 which was broken by the use of segments in this file, as
+     33  10000 ????						;			 reported by Manuel Polik on [stella] 11/MAY/2003
+     34  10000 ????						; 1.02  22/MAR/2003	 Added TIMINT($285)
+     35  10000 ????						; 1.01				Constant offset added to allow use for 3F-style bankswitching
+     36  10000 ????						;						 - define TIA_BASE_ADDRESS as $40 for Tigervision carts, otherwise
+     37  10000 ????						;						   it is safe to leave it undefined, and the base address will
+     38  10000 ????						;						   be set to 0.  Thanks to Eckhard Stolberg for the suggestion.
+     39  10000 ????						;			    Note, may use -DLABEL=EXPRESSION to define TIA_BASE_ADDRESS
+     40  10000 ????						;			  - register definitions are now generated through assignment
+     41  10000 ????						;			    in uninitialised segments.	This allows a changeable base
+     42  10000 ????						;			    address architecture.
+     43  10000 ????						; 1.0	22/MAR/2003		Initial release
+     44  10000 ????
+     45  10000 ????
+     46  10000 ????						;-------------------------------------------------------------------------------
+     47  10000 ????
+     48  10000 ????						; TIA_BASE_ADDRESS
+     49  10000 ????						; The TIA_BASE_ADDRESS defines the base address of access to TIA registers.
+     50  10000 ????						; Normally 0, the base address should (externally, before including this file)
+     51  10000 ????						; be set to $40 when creating 3F-bankswitched (and other?) cartridges.
+     52  10000 ????						; The reason is that this bankswitching scheme treats any access to locations
+     53  10000 ????						; < $40 as a bankswitch.
+     54  10000 ????
+     55  10000 ????			   -	       IFNCONST	TIA_BASE_ADDRESS
+     56  10000 ????			   -TIA_BASE_ADDRESS =	0
+     57  10000 ????				       ENDIF
+     58  10000 ????
+     59  10000 ????						; Note: The address may be defined on the command-line using the -D switch, eg:
+     60  10000 ????						; dasm.exe code.asm -DTIA_BASE_ADDRESS=$40 -f3 -v5 -ocode.bin
+     61  10000 ????						; *OR* by declaring the label before including this file, eg:
+     62  10000 ????						; TIA_BASE_ADDRESS = $40
+     63  10000 ????						;   include "vcs.h"
+     64  10000 ????
+     65  10000 ????						; Alternate read/write address capability - allows for some disassembly compatibility
+     66  10000 ????						; usage ; to allow reassembly to binary perfect copies).  This is essentially catering
+     67  10000 ????						; for the mirrored ROM hardware registers.
+     68  10000 ????
+     69  10000 ????						; Usage: As per above, define the TIA_BASE_READ_ADDRESS and/or TIA_BASE_WRITE_ADDRESS
+     70  10000 ????						; using the -D command-line switch, as required.  If the addresses are not defined,
+     71  10000 ????						; they defaut to the TIA_BASE_ADDRESS.
+     72  10000 ????
+     73  10000 ????			   -	       IFNCONST	TIA_BASE_READ_ADDRESS
+     74  10000 ????			   -TIA_BASE_READ_ADDRESS =	TIA_BASE_ADDRESS
+     75  10000 ????				       ENDIF
+     76  10000 ????
+     77  10000 ????			   -	       IFNCONST	TIA_BASE_WRITE_ADDRESS
+     78  10000 ????			   -TIA_BASE_WRITE_ADDRESS =	TIA_BASE_ADDRESS
+     79  10000 ????				       ENDIF
+     80  10000 ????
+     81  10000 ????						;-------------------------------------------------------------------------------
+     82  10000 ????
+     83 U002d ????				      SEG.U	TIA_REGISTERS_WRITE
+     84 U0000					      ORG	TIA_BASE_WRITE_ADDRESS
+     85 U0000
+     86 U0000							; DO NOT CHANGE THE RELATIVE ORDERING OF REGISTERS!
+     87 U0000
+     88 U0000		       00	   VSYNC      ds	1	; $00	 0000 00x0   Vertical Sync Set-Clear
+     89 U0001		       00	   VBLANK     ds	1	; $01	 xx00 00x0   Vertical Blank Set-Clear
+     90 U0002		       00	   WSYNC      ds	1	; $02	 ---- ----   Wait for Horizontal Blank
+     91 U0003		       00	   RSYNC      ds	1	; $03	 ---- ----   Reset Horizontal Sync Counter
+     92 U0004		       00	   NUSIZ0     ds	1	; $04	 00xx 0xxx   Number-Size player/missle 0
+     93 U0005		       00	   NUSIZ1     ds	1	; $05	 00xx 0xxx   Number-Size player/missle 1
+     94 U0006		       00	   COLUP0     ds	1	; $06	 xxxx xxx0   Color-Luminance Player 0
+     95 U0007		       00	   COLUP1     ds	1	; $07	 xxxx xxx0   Color-Luminance Player 1
+     96 U0008		       00	   COLUPF     ds	1	; $08	 xxxx xxx0   Color-Luminance Playfield
+     97 U0009		       00	   COLUBK     ds	1	; $09	 xxxx xxx0   Color-Luminance Background
+     98 U000a		       00	   CTRLPF     ds	1	; $0A	 00xx 0xxx   Control Playfield, Ball, Collisions
+     99 U000b		       00	   REFP0      ds	1	; $0B	 0000 x000   Reflection Player 0
+    100 U000c		       00	   REFP1      ds	1	; $0C	 0000 x000   Reflection Player 1
+    101 U000d		       00	   PF0	      ds	1	; $0D	 xxxx 0000   Playfield Register Byte 0
+    102 U000e		       00	   PF1	      ds	1	; $0E	 xxxx xxxx   Playfield Register Byte 1
+    103 U000f		       00	   PF2	      ds	1	; $0F	 xxxx xxxx   Playfield Register Byte 2
+    104 U0010		       00	   RESP0      ds	1	; $10	 ---- ----   Reset Player 0
+    105 U0011		       00	   RESP1      ds	1	; $11	 ---- ----   Reset Player 1
+    106 U0012		       00	   RESM0      ds	1	; $12	 ---- ----   Reset Missle 0
+    107 U0013		       00	   RESM1      ds	1	; $13	 ---- ----   Reset Missle 1
+    108 U0014		       00	   RESBL      ds	1	; $14	 ---- ----   Reset Ball
+    109 U0015		       00	   AUDC0      ds	1	; $15	 0000 xxxx   Audio Control 0
+    110 U0016		       00	   AUDC1      ds	1	; $16	 0000 xxxx   Audio Control 1
+    111 U0017		       00	   AUDF0      ds	1	; $17	 000x xxxx   Audio Frequency 0
+    112 U0018		       00	   AUDF1      ds	1	; $18	 000x xxxx   Audio Frequency 1
+    113 U0019		       00	   AUDV0      ds	1	; $19	 0000 xxxx   Audio Volume 0
+    114 U001a		       00	   AUDV1      ds	1	; $1A	 0000 xxxx   Audio Volume 1
+    115 U001b		       00	   GRP0       ds	1	; $1B	 xxxx xxxx   Graphics Register Player 0
+    116 U001c		       00	   GRP1       ds	1	; $1C	 xxxx xxxx   Graphics Register Player 1
+    117 U001d		       00	   ENAM0      ds	1	; $1D	 0000 00x0   Graphics Enable Missle 0
+    118 U001e		       00	   ENAM1      ds	1	; $1E	 0000 00x0   Graphics Enable Missle 1
+    119 U001f		       00	   ENABL      ds	1	; $1F	 0000 00x0   Graphics Enable Ball
+    120 U0020		       00	   HMP0       ds	1	; $20	 xxxx 0000   Horizontal Motion Player 0
+    121 U0021		       00	   HMP1       ds	1	; $21	 xxxx 0000   Horizontal Motion Player 1
+    122 U0022		       00	   HMM0       ds	1	; $22	 xxxx 0000   Horizontal Motion Missle 0
+    123 U0023		       00	   HMM1       ds	1	; $23	 xxxx 0000   Horizontal Motion Missle 1
+    124 U0024		       00	   HMBL       ds	1	; $24	 xxxx 0000   Horizontal Motion Ball
+    125 U0025		       00	   VDELP0     ds	1	; $25	 0000 000x   Vertical Delay Player 0
+    126 U0026		       00	   VDELP1     ds	1	; $26	 0000 000x   Vertical Delay Player 1
+    127 U0027		       00	   VDELBL     ds	1	; $27	 0000 000x   Vertical Delay Ball
+    128 U0028		       00	   RESMP0     ds	1	; $28	 0000 00x0   Reset Missle 0 to Player 0
+    129 U0029		       00	   RESMP1     ds	1	; $29	 0000 00x0   Reset Missle 1 to Player 1
+    130 U002a		       00	   HMOVE      ds	1	; $2A	 ---- ----   Apply Horizontal Motion
+    131 U002b		       00	   HMCLR      ds	1	; $2B	 ---- ----   Clear Horizontal Move Registers
+    132 U002c		       00	   CXCLR      ds	1	; $2C	 ---- ----   Clear Collision Latches
+    133 U002d
+    134 U002d							;-------------------------------------------------------------------------------
+    135 U002d
+    136 U000e ????				      SEG.U	TIA_REGISTERS_READ
+    137 U0000					      ORG	TIA_BASE_READ_ADDRESS
+    138 U0000
+    139 U0000							;											bit 7	 bit 6
+    140 U0000		       00	   CXM0P      ds	1	; $00	     xx00 0000	     Read Collision  M0-P1   M0-P0
+    141 U0001		       00	   CXM1P      ds	1	; $01	     xx00 0000			     M1-P0   M1-P1
+    142 U0002		       00	   CXP0FB     ds	1	; $02	     xx00 0000			     P0-PF   P0-BL
+    143 U0003		       00	   CXP1FB     ds	1	; $03	     xx00 0000			     P1-PF   P1-BL
+    144 U0004		       00	   CXM0FB     ds	1	; $04	     xx00 0000			     M0-PF   M0-BL
+    145 U0005		       00	   CXM1FB     ds	1	; $05	     xx00 0000			     M1-PF   M1-BL
+    146 U0006		       00	   CXBLPF     ds	1	; $06	     x000 0000			     BL-PF   -----
+    147 U0007		       00	   CXPPMM     ds	1	; $07	     xx00 0000			     P0-P1   M0-M1
+    148 U0008		       00	   INPT0      ds	1	; $08	     x000 0000	     Read Pot Port 0
+    149 U0009		       00	   INPT1      ds	1	; $09	     x000 0000	     Read Pot Port 1
+    150 U000a		       00	   INPT2      ds	1	; $0A	     x000 0000	     Read Pot Port 2
+    151 U000b		       00	   INPT3      ds	1	; $0B	     x000 0000	     Read Pot Port 3
+    152 U000c		       00	   INPT4      ds	1	; $0C		x000 0000	 Read Input (Trigger) 0
+    153 U000d		       00	   INPT5      ds	1	; $0D		x000 0000	 Read Input (Trigger) 1
+    154 U000e
+    155 U000e							;-------------------------------------------------------------------------------
+    156 U000e
+    157 U0298 ????				      SEG.U	RIOT
+    158 U0280					      ORG	$280
+    159 U0280
+    160 U0280							; RIOT MEMORY MAP
+    161 U0280
+    162 U0280		       00	   SWCHA      ds	1	; $280      Port A data register for joysticks:
+    163 U0281							;			Bits 4-7 for player 1.  Bits 0-3 for player 2.
+    164 U0281
+    165 U0281		       00	   SWACNT     ds	1	; $281      Port A data direction register (DDR)
+    166 U0282		       00	   SWCHB      ds	1	; $282		Port B data (console switches)
+    167 U0283		       00	   SWBCNT     ds	1	; $283      Port B DDR
+    168 U0284		       00	   INTIM      ds	1	; $284		Timer output
+    169 U0285
+    170 U0285		       00	   TIMINT     ds	1	; $285
+    171 U0286
+    172 U0286							; Unused/undefined registers ($285-$294)
+    173 U0286
+    174 U0286		       00		      ds	1	; $286
+    175 U0287		       00		      ds	1	; $287
+    176 U0288		       00		      ds	1	; $288
+    177 U0289		       00		      ds	1	; $289
+    178 U028a		       00		      ds	1	; $28A
+    179 U028b		       00		      ds	1	; $28B
+    180 U028c		       00		      ds	1	; $28C
+    181 U028d		       00		      ds	1	; $28D
+    182 U028e		       00		      ds	1	; $28E
+    183 U028f		       00		      ds	1	; $28F
+    184 U0290		       00		      ds	1	; $290
+    185 U0291		       00		      ds	1	; $291
+    186 U0292		       00		      ds	1	; $292
+    187 U0293		       00		      ds	1	; $293
+    188 U0294
+    189 U0294		       00	   TIM1T      ds	1	; $294		set 1 clock interval
+    190 U0295		       00	   TIM8T      ds	1	; $295      set 8 clock interval
+    191 U0296		       00	   TIM64T     ds	1	; $296      set 64 clock interval
+    192 U0297		       00	   T1024T     ds	1	; $297      set 1024 clock interval
+    193 U0298
+    194 U0298							;-------------------------------------------------------------------------------
+    195 U0298							; The following required for back-compatibility with code which does not use
+    196 U0298							; segments.
+    197 U0298
+    198  0000 ????				      SEG
+    199  0000 ????
+    200  0000 ????						; EOF
+------- FILE bad_apple.asm
+------- FILE macro.h LEVEL 2 PASS 2
+      0  0000 ????				      include	"macro.h"
+      1  0000 ????						; MACRO.H
+      2  0000 ????						; Version 1.09, 05/SEP/2020
+      3  0000 ????
+      4  0000 ????	       00 6d	   VERSION_MACRO =	109
+      5  0000 ????
+      6  0000 ????						;
+      7  0000 ????						; THIS FILE IS EXPLICITLY SUPPORTED AS A DASM-PREFERRED COMPANION FILE
+      8  0000 ????						; The latest version can be found at https://dasm-assembler.github.io/
+      9  0000 ????						;
+     10  0000 ????						; This file defines DASM macros useful for development for the Atari 2600.
+     11  0000 ????						; It is distributed as a companion machine-specific support package
+     12  0000 ????						; for the DASM compiler.
+     13  0000 ????						;
+     14  0000 ????						; Many thanks to the people who have contributed. If you find an issue with the
+     15  0000 ????						; contents, or would like ot add something, please report as an issue at...
+     16  0000 ????						; https://github.com/dasm-assembler/dasm/issues
+     17  0000 ????
+     18  0000 ????
+     19  0000 ????						; Latest Revisions...
+     20  0000 ????						; 1.09  05/SEP/2020	 - updated license/links
+     21  0000 ????
+     22  0000 ????						; 1.08  13/JUL/2020	 - added use of LXA to CLEAN_START
+     23  0000 ????						; 1.07  19/JAN/2020	 - correction to comment VERTICAL_SYNC
+     24  0000 ????						; 1.06  03/SEP/2004	 - nice revision of VERTICAL_SYNC (Edwin Blink)
+     25  0000 ????						; 1.05  14/NOV/2003	 - Added VERSION_MACRO equate (which will reflect 100x version #)
+     26  0000 ????						;			   This will allow conditional code to verify MACRO.H being
+     27  0000 ????						;			   used for code assembly.
+     28  0000 ????						; 1.04  13/NOV/2003	 - SET_POINTER macro added (16-bit address load)
+     29  0000 ????						;
+     30  0000 ????						; 1.03  23/JUN/2003	 - CLEAN_START macro added - clears TIA, RAM, registers
+     31  0000 ????						;
+     32  0000 ????						; 1.02  14/JUN/2003	 - VERTICAL_SYNC macro added
+     33  0000 ????						;			   (standardised macro for vertical synch code)
+     34  0000 ????						; 1.01  22/MAR/2003	 - SLEEP macro added.
+     35  0000 ????						;			 - NO_ILLEGAL_OPCODES switch implemented
+     36  0000 ????						; 1.0	22/MAR/2003		Initial release
+     37  0000 ????
+     38  0000 ????						; Note: These macros use illegal opcodes.  To disable illegal opcode usage,
+     39  0000 ????						;   define the symbol NO_ILLEGAL_OPCODES (-DNO_ILLEGAL_OPCODES=1 on command-line).
+     40  0000 ????						;   If you do not allow illegal opcode usage, you must include this file
+     41  0000 ????						;   *after* including VCS.H (as the non-illegal opcodes access hardware
+     42  0000 ????						;   registers and require them to be defined first).
+     43  0000 ????
+     44  0000 ????						; Available macros...
+     45  0000 ????						;   SLEEP n		 - sleep for n cycles
+     46  0000 ????						;   VERTICAL_SYNC	 - correct 3 scanline vertical synch code
+     47  0000 ????						;   CLEAN_START	 - set machine to known state on startup
+     48  0000 ????						;   SET_POINTER	 - load a 16-bit absolute to a 16-bit variable
+     49  0000 ????
+     50  0000 ????						;-------------------------------------------------------------------------------
+     51  0000 ????						; SLEEP duration
+     52  0000 ????						; Original author: Thomas Jentzsch
+     53  0000 ????						; Inserts code which takes the specified number of cycles to execute.	This is
+     54  0000 ????						; useful for code where precise timing is required.
+     55  0000 ????						; ILLEGAL-OPCODE VERSION DOES NOT AFFECT FLAGS OR REGISTERS.
+     56  0000 ????						; LEGAL OPCODE VERSION MAY AFFECT FLAGS
+     57  0000 ????						; Uses illegal opcode (DASM 2.20.01 onwards).
+     58  0000 ????
+     59  0000 ????				      MAC	sleep
+     60  0000 ????			   .CYCLES    SET	{1}
+     61  0000 ????
+     62  0000 ????				      IF	.CYCLES < 2
+     63  0000 ????				      ECHO	"MACRO ERROR: 'SLEEP': Duration must be > 1"
+     64  0000 ????				      ERR
+     65  0000 ????				      ENDIF
+     66  0000 ????
+     67  0000 ????				      IF	.CYCLES & 1
+     68  0000 ????				      IFNCONST	NO_ILLEGAL_OPCODES
+     69  0000 ????				      nop	0
+     70  0000 ????				      ELSE
+     71  0000 ????				      bit	VSYNC
+     72  0000 ????				      ENDIF
+     73  0000 ????			   .CYCLES    SET	.CYCLES - 3
+     74  0000 ????				      ENDIF
+     75  0000 ????
+     76  0000 ????				      REPEAT	.CYCLES / 2
+     77  0000 ????				      nop
+     78  0000 ????				      REPEND
+     79  0000 ????				      ENDM		;usage: SLEEP n (n>1)
+     80  0000 ????
+     81  0000 ????						;-------------------------------------------------------------------------------
+     82  0000 ????						; VERTICAL_SYNC
+     83  0000 ????						; revised version by Edwin Blink -- saves bytes!
+     84  0000 ????						; Inserts the code required for a proper 3 scanline vertical sync sequence
+     85  0000 ????						; Note: Alters the accumulator
+     86  0000 ????
+     87  0000 ????						; OUT: A = 0
+     88  0000 ????
+     89  0000 ????				      MAC	vertical_sync
+     90  0000 ????				      lda	#%1110	; each '1' bits generate a VSYNC ON line (bits 1..3)
+     91  0000 ????			   .VSLP1     sta	WSYNC	; 1st '0' bit resets Vsync, 2nd '0' bit exit loop
+     92  0000 ????				      sta	VSYNC
+     93  0000 ????				      lsr
+     94  0000 ????				      bne	.VSLP1	; branch until VYSNC has been reset
+     95  0000 ????				      ENDM
+     96  0000 ????
+     97  0000 ????						;-------------------------------------------------------------------------------
+     98  0000 ????						; CLEAN_START
+     99  0000 ????						; Original author: Andrew Davie
+    100  0000 ????						; Standardised start-up code, clears stack, all TIA registers and RAM to 0
+    101  0000 ????						; Sets stack pointer to $FF, and all registers to 0
+    102  0000 ????						; Sets decimal mode off, sets interrupt flag (kind of un-necessary)
+    103  0000 ????						; Use as very first section of code on boot (ie: at reset)
+    104  0000 ????						; Code written to minimise total ROM usage - uses weird 6502 knowledge :)
+    105  0000 ????
+    106  0000 ????				      MAC	clean_start
+    107  0000 ????				      sei
+    108  0000 ????				      cld
+    109  0000 ????
+    110  0000 ????				      IFNCONST	NO_ILLEGAL_OPCODES
+    111  0000 ????				      lxa	#0
+    112  0000 ????				      ELSE
+    113  0000 ????				      ldx	#0
+    114  0000 ????				      txa
+    115  0000 ????				      ENDIF
+    116  0000 ????				      tay
+    117  0000 ????			   .CLEAR_STACK dex
+    118  0000 ????				      txs
+    119  0000 ????				      pha
+    120  0000 ????				      bne	.CLEAR_STACK	; SP=$FF, X = A = Y = 0
+    121  0000 ????
+    122  0000 ????				      ENDM
+    123  0000 ????
+    124  0000 ????						;-------------------------------------------------------
+    125  0000 ????						; SET_POINTER
+    126  0000 ????						; Original author: Manuel Rotschkar
+    127  0000 ????						;
+    128  0000 ????						; Sets a 2 byte RAM pointer to an absolute address.
+    129  0000 ????						;
+    130  0000 ????						; Usage: SET_POINTER pointer, address
+    131  0000 ????						; Example: SET_POINTER SpritePTR, SpriteData
+    132  0000 ????						;
+    133  0000 ????						; Note: Alters the accumulator, NZ flags
+    134  0000 ????						; IN 1: 2 byte RAM location reserved for pointer
+    135  0000 ????						; IN 2: absolute address
+    136  0000 ????
+    137  0000 ????				      MAC	set_pointer
+    138  0000 ????			   .POINTER   SET	{1}
+    139  0000 ????			   .ADDRESS   SET	{2}
+    140  0000 ????
+    141  0000 ????				      LDA	#<.ADDRESS	; Get Lowbyte of Address
+    142  0000 ????				      STA	.POINTER	; Store in pointer
+    143  0000 ????				      LDA	#>.ADDRESS	; Get Hibyte of Address
+    144  0000 ????				      STA	.POINTER+1	; Store in pointer+1
+    145  0000 ????
+    146  0000 ????				      ENDM
+    147  0000 ????
+    148  0000 ????						;-------------------------------------------------------
+    149  0000 ????						; BOUNDARY byte#
+    150  0000 ????						; Original author: Denis Debro (borrowed from Bob Smith / Thomas)
+    151  0000 ????						;
+    152  0000 ????						; Push data to a certain position inside a page and keep count of how
+    153  0000 ????						; many free bytes the programmer will have.
+    154  0000 ????						;
+    155  0000 ????						; eg: BOUNDARY 5    ; position at byte #5 in page
+    156  0000 ????
+    157  0000 ????			   .FREE_BYTES SET	0
+    158  0000 ????				      MAC	boundary
+    159  0000 ????				      REPEAT	256
+    160  0000 ????				      IF	<. % {1} = 0
+    161  0000 ????				      MEXIT
+    162  0000 ????				      ELSE
+    163  0000 ????			   .FREE_BYTES SET	.FREE_BYTES + 1
+    164  0000 ????				      .byte	$00
+    165  0000 ????				      ENDIF
+    166  0000 ????				      REPEND
+    167  0000 ????				      ENDM
+    168  0000 ????
+    169  0000 ????
+    170  0000 ????						; EOF
+------- FILE bad_apple.asm
+     23  0000 ????
+     24  0000 ????						;------------------------------------------------------------------------
+     25  0000 ????						;   ___	     _		  _	 
+     26  0000 ????						;  / __|___ _ _  __| |_ __ _ _ _| |_ ___
+     27  0000 ????						; | (__/ _ \ ' \(_-<  _/ _` | ' \  _(_-<
+     28  0000 ????						;  \___\___/_||_/__/\__\__,_|_||_\__/__/
+     29  0000 ????						;					   
+     30  0000 ????						;------------------------------------------------------------------------
+     31  0000 ????
+     32  0000 ????	       00 c0	   SCREEN_H   equ	#192	; Altura da tela em scanlines
+     33  0000 ????	       00 10	   PIXEL_H    equ	#16	; Altura da tela em pixels
+     34  0000 ????
+     35  0000 ????	       00 0e	   PF_COL     equ	#$0E	; Cor do playfield
+     36  0000 ????	       00 00	   BG_COL     equ	#$00	; Cor do fundo
+     37  0000 ????
+     38  0000 ????	       00 3c	   FPS	      equ	#60	; Quadros por segundo
+     39  0000 ????	       00 01	   SCREEN_RATE equ	#1	; Telas por segundo
+     40  0000 ????	       00 08	   AUD_RATE   equ	#8	; Notas por segundo
+     41  0000 ????
+     42  0000 ????	       00 01	   AUD_CTL    equ	#1	; Tipo de som
+     43  0000 ????	       00 03	   AUD_VOL    equ	#3	; Volume do audio
+     44  0000 ????
+     45  0000 ????						;------------------------------------------------------------------------
+     46  0000 ????						; __	__	  _	 _    _        
+     47  0000 ????						; \ \ / /_ _ _ _(_)__ _| |__| |___ ___
+     48  0000 ????						;  \ V / _` | '_| / _` | '_ \ / -_|_-<
+     49  0000 ????						;   \_/\__,_|_| |_\__,_|_.__/_\___/__/
+     50  0000 ????						;
+     51  0000 ????						;------------------------------------------------------------------------
+     52  0000 ????
+     53 U0087 ????				      seg.u	vars
+     54 U0080					      org	$80
+     55 U0080
+     56 U0080		       00	   temp       ds	1	; Variavel temporaria
+     57 U0081
+     58 U0081		       00	   audIndex   ds	1	; Indice do audio
+     59 U0082		       00	   audTimer   ds	1	; Temporizador para mudar de audio
+     60 U0083		       00	   audTableInd ds	1	; Indice da tabela de audio
+     61 U0084
+     62 U0084		       00	   screenOffset ds	1	; Offset da tela (pixels)
+     63 U0085		       00	   screenTimer ds	1	; Temporizador para mudar de tela
+     64 U0086		       00	   screenTableInd ds	1	; Indice da tabela de tela
+     65 U0087
+     66  10000 ????				       seg	main
+     67  f000					      org	$f000
+     68  f000
+     69  f000							;------------------------------------------------------------------------
+     70  f000							;  ___ 	    _	
+     71  f000							; | _ \___ ___ ___| |_ 
+     72  f000							; |   / -_|_-</ -_)  _|
+     73  f000							; |_|_\___/__/\___|\__|
+     74  f000							;			
+     75  f000							;------------------------------------------------------------------------
+     76  f000
+      0  f000				   reset      CLEAN_START		; Reseta o hardware
+      1  f000		       78		      sei
+      2  f001		       d8		      cld
+      3  f002
+      4  f002					      IFNCONST	NO_ILLEGAL_OPCODES
+      5  f002		       ab 00		      lxa	#0
+      6  f004				  -	      ELSE
+      7  f004				  -	      ldx	#0
+      8  f004				  -	      txa
+      9  f004					      ENDIF
+     10  f004		       a8		      tay
+     11  f005		       ca	   .CLEAR_STACK dex
+     12  f006		       9a		      txs
+     13  f007		       48		      pha
+     14  f008		       d0 fb		      bne	.CLEAR_STACK
+     15  f00a
+     78  f00a
+     79  f00a							; Cor do playfield e fundo
+     80  f00a		       a9 0e		      lda	#PF_COL	; (2)
+     81  f00c		       85 08		      sta	COLUPF	; (3)
+     82  f00e		       a9 00		      lda	#BG_COL	; (2)
+     83  f010		       85 09		      sta	COLUBK	; (3)
+     84  f012
+     85  f012							; Reseta variaveis
+     86  f012		       a9 00		      lda	#0	; (2)
+     87  f014		       85 81		      sta	audIndex	; (3)
+     88  f016		       85 83		      sta	audTableInd	; (3)
+     89  f018		       85 84		      sta	screenOffset	; (3)
+     90  f01a		       85 86		      sta	screenTableInd	; (3)
+     91  f01c		       85 19		      sta	AUDV0	; (3)
+     92  f01e
+     93  f01e							; Temporizador de tela e de audio
+     94  f01e		       a9 3c		      lda	#FPS/SCREEN_RATE	; (2)
+     95  f020		       85 85		      sta	screenTimer	; (3)
+     96  f022		       a9 07		      lda	#FPS/#AUD_RATE	; (2)
+     97  f024		       85 82		      sta	audTimer	; (3)
+     98  f026
+     99  f026							; Audio
+    100  f026		       a9 01		      lda	#AUD_CTL	; (2)
+    101  f028		       85 15		      sta	AUDC0	; (3)
+    102  f02a
+    103  f02a							;------------------------------------------------------------------------
+    104  f02a							;  _	_	   _	  _	  
+    105  f02a							; | | | |_ __	__| |__ _| |_ ___ 
+    106  f02a							; | |_| | '_ \/ _` / _` |  _/ -_)
+    107  f02a							;  \___/| .__/\__,_\__,_|\__\___|
+    108  f02a							;	 |_|			  
+    109  f02a							;------------------------------------------------------------------------
+    110  f02a
+    111  f02a				   startFrame
+    112  f02a							;......................... VERTICAL SYNC (3) ............................
+    113  f02a		       a9 00		      lda	#0	; (2)	     
+    114  f02c		       85 01		      sta	VBLANK	; (3)
+    115  f02e		       a9 02		      lda	#2	; (2)
+    116  f030		       85 00		      sta	VSYNC	; (3)
+    117  f032		       85 02		      sta	WSYNC	; (3)
+    118  f034		       85 02		      sta	WSYNC	; (3)
+    119  f036		       85 02		      sta	WSYNC	; (3)
+    120  f038		       a9 00		      lda	#0	; (2)
+    121  f03a		       85 00		      sta	VSYNC	; (3)
+    122  f03c
+    123  f03c							;......................... VERTICAL BLANK (37) ..........................
+    124  f03c		       a2 00		      ldx	#0	; (2)
+    125  f03e		       85 02	   verticalBlank sta	WSYNC	; (3)				
+    126  f040		       e8		      inx		; (2)
+    127  f041		       e0 23		      cpx	#35	; (2)
+    128  f043		       d0 f9		      bne	verticalBlank	; (2/3)
+    129  f045
+    130  f045							; Define frequencia de audio atual
+    131  f045		       a5 81		      lda	audIndex	; (3)
+    132  f047		       29 01		      and	#%00000001	; (2)
+    133  f049		       85 80		      sta	temp	; (3)
+    134  f04b		       a5 81		      lda	audIndex	; (3)
+    135  f04d		       4a		      lsr		; (2)
+    136  f04e		       a8		      tay		; (2)
+    137  f04f
+    138  f04f		       b9 cd f1 	      lda	AUD_DATA_0,y	; (4)
+    139  f052		       a6 83		      ldx	audTableInd	; (3)
+    140  f054		       f0 0f		      beq	foundTable	; (2/3)
+    141  f056		       b9 cd f2 	      lda	AUD_DATA_1,y	; (4)
+    142  f059		       ca		      dex		; (2)
+    143  f05a		       f0 09		      beq	foundTable	; (2/3)
+    144  f05c		       b9 cd f3 	      lda	AUD_DATA_2,y	; (4)
+    145  f05f		       ca		      dex		; (2)
+    146  f060		       f0 03		      beq	foundTable	; (2/3)
+    147  f062		       b9 cd f4 	      lda	AUD_DATA_3,y	; (4)
+    148  f065
+    149  f065		       85 02	   foundTable sta	WSYNC	; (3)
+    150  f067		       a6 80		      ldx	temp	; (3)
+    151  f069		       d0 04		      bne	oddAudInd	; (2/3)
+    152  f06b
+    153  f06b		       4a		      lsr		; (2)
+    154  f06c		       4a		      lsr		; (2)							
+    155  f06d		       4a		      lsr		; (2)
+    156  f06e		       4a		      lsr		; (2)
+    157  f06f
+    158  f06f		       29 0f	   oddAudInd  and	#%00001111	; (2)
+    159  f071		       a8		      tay		; (2)
+    160  f072		       b9 bd f1 	      lda	KEYS_DATA,y	; (4)
+    161  f075		       f0 04		      beq	muteAud	; (2/3)
+    162  f077		       85 17		      sta	AUDF0	; (3)
+    163  f079		       a9 03		      lda	#3	; (2)
+    164  f07b
+    165  f07b		       85 19	   muteAud    sta	AUDV0	; (3)
+    166  f07d		       85 02		      sta	WSYNC	; (3)
+    167  f07f
+    168  f07f							;......................... DRAWFIELD (192) ..............................
+    169  f07f
+    170  f07f		       a2 00		      ldx	#0	; (2)
+    171  f081		       bd fc f0    drawField0 lda	dividePixelHeight,x	; (4)
+    172  f084		       18		      clc		; (2)
+    173  f085		       65 84		      adc	screenOffset	; (3)
+    174  f087		       a8		      tay		; (2)
+    175  f088
+    176  f088		       b9 45 f5 	      lda	SCREEN_0_DATA_0,y	; (4)
+    177  f08b		       29 0f		      and	#%00001111	; (2)
+    178  f08d		       85 02		      sta	WSYNC	; (3)
+    179  f08f		       85 0e		      sta	PF1	; (3)
+    180  f091
+    181  f091		       b9 45 f6 	      lda	SCREEN_1_DATA_0,y	; (4)
+    182  f094		       29 0f		      and	#%00001111	; (2)
+    183  f096		       85 80		      sta	temp	; (2)
+    184  f098		       b9 45 f5 	      lda	SCREEN_0_DATA_0,y	; (4)
+    185  f09b		       29 f0		      and	#%11110000	; (2)
+    186  f09d		       18		      clc		; (2)
+    187  f09e		       65 80		      adc	temp	; (3)
+    188  f0a0		       85 0f		      sta	PF2	; (3)
+    189  f0a2
+    190  f0a2		       b9 45 f6 	      lda	SCREEN_1_DATA_0,y	; (4)
+    191  f0a5		       29 f0		      and	#%11110000	; (2)
+    192  f0a7		       85 0d		      sta	PF0	; (3)
+    193  f0a9
+    194  f0a9		       b9 45 f7 	      lda	SCREEN_2_DATA_0,y	; (4)
+    195  f0ac		       85 0e		      sta	PF1	; (3)
+    196  f0ae
+      0  f0ae					      SLEEP	14
+      1  f0ae				   .CYCLES    SET	14
+      2  f0ae
+      3  f0ae				  -	      IF	.CYCLES < 2
+      4  f0ae				  -	      ECHO	"MACRO ERROR: 'SLEEP': Duration must be > 1"
+      5  f0ae				  -	      ERR
+      6  f0ae					      ENDIF
+      7  f0ae
+      8  f0ae				  -	      IF	.CYCLES & 1
+      9  f0ae				  -	      IFNCONST	NO_ILLEGAL_OPCODES
+     10  f0ae				  -	      nop	0
+     11  f0ae				  -	      ELSE
+     12  f0ae				  -	      bit	VSYNC
+     13  f0ae				  -	      ENDIF
+     14  f0ae				  -.CYCLES    SET	.CYCLES - 3
+     15  f0ae					      ENDIF
+     16  f0ae
+     17  f0ae					      REPEAT	.CYCLES / 2
+     18  f0ae		       ea		      nop
+     17  f0ae					      REPEND
+     18  f0af		       ea		      nop
+     17  f0af					      REPEND
+     18  f0b0		       ea		      nop
+     17  f0b0					      REPEND
+     18  f0b1		       ea		      nop
+     17  f0b1					      REPEND
+     18  f0b2		       ea		      nop
+     17  f0b2					      REPEND
+     18  f0b3		       ea		      nop
+     17  f0b3					      REPEND
+     18  f0b4		       ea		      nop
+     19  f0b5					      REPEND
+    198  f0b5		       a9 00		      lda	#0	; (2)
+    199  f0b7		       85 0f		      sta	PF2	; (3)
+    200  f0b9		       85 0e		      sta	PF1	; (3)
+    201  f0bb		       85 0d		      sta	PF0	; (3)
+    202  f0bd
+    203  f0bd		       85 02		      sta	WSYNC	; (3)
+    204  f0bf
+    205  f0bf		       e8		      inx		; (2)
+    206  f0c0		       e8		      inx		; (2)
+    207  f0c1		       e0 c0		      cpx	#SCREEN_H	; (2)
+    208  f0c3		       d0 bc		      bne	drawField0	; (2/3)
+    209  f0c5
+    210  f0c5		       a9 42		      lda	#%01000010	; (2)
+    211  f0c7		       85 01		      sta	VBLANK	; (3)
+    212  f0c9
+    213  f0c9							;......................... OVERSCAN (30) ................................
+    214  f0c9
+    215  f0c9		       a2 00		      ldx	#0	; (2)
+    216  f0cb		       85 02	   overscan   sta	WSYNC	; (3)
+    217  f0cd		       e8		      inx		; (2)
+    218  f0ce		       e0 1b		      cpx	#27	; (2)
+    219  f0d0		       d0 f9		      bne	overscan	; (2/3)
+    220  f0d2
+    221  f0d2		       85 02		      sta	WSYNC	; (3)
+    222  f0d4
+    223  f0d4							; Audio
+    224  f0d4		       c6 82		      dec	audTimer	; (5)
+    225  f0d6		       d0 0a		      bne	noAudIndex	; (2/3)
+    226  f0d8		       e6 81		      inc	audIndex	; (5)
+    227  f0da		       d0 02		      bne	noAudTable	; (2/3)
+    228  f0dc		       e6 83		      inc	audTableInd	; (5)
+    229  f0de		       a9 07	   noAudTable lda	#FPS/#AUD_RATE	; (2)
+    230  f0e0		       85 82		      sta	audTimer	; (3)
+    231  f0e2				   noAudIndex
+    232  f0e2		       85 02		      sta	WSYNC	; (3)
+    233  f0e4
+    234  f0e4							; Tela
+    235  f0e4		       c6 85		      dec	screenTimer	; (5)
+    236  f0e6		       d0 0f		      bne	noScreenOffset	; (2/3)
+    237  f0e8		       a5 84		      lda	screenOffset	; (3)
+    238  f0ea		       18		      clc		; (2)
+    239  f0eb		       69 10		      adc	#PIXEL_H	; (3)
+    240  f0ed		       85 84		      sta	screenOffset	; (3)
+    241  f0ef		       d0 02		      bne	noScreenTable	; (2/3)
+    242  f0f1		       e6 86		      inc	screenTableInd	; (5)
+    243  f0f3		       a9 3c	   noScreenTable lda	#FPS/#SCREEN_RATE	; (2)
+    244  f0f5		       85 85		      sta	screenTimer	; (3)
+    245  f0f7				   noScreenOffset
+    246  f0f7
+    247  f0f7		       85 02		      sta	WSYNC	; (3)
+    248  f0f9
+    249  f0f9		       4c 2a f0 	      jmp	startFrame	; (3) Fim do frame, avanca para o proximo
+    250  f0fc
+    251  f0fc							;------------------------------------------------------------------------
+    252  f0fc							;   ___		     _	 _	       
+    253  f0fc							;  / _ \ _ __	___ _ _ __ _| |_(_)___ _ _  ___
+    254  f0fc							; | (_) | '_ \/ -_) '_/ _` |  _| / _ \ ' \(_-<
+    255  f0fc							;  \___/| .__/\___|_| \__,_|\__|_\___/_||_/__/
+    256  f0fc							;	 |_|				       
+    257  f0fc							;------------------------------------------------------------------------
+    258  f0fc
+    259  f0fc				   dividePixelHeight
+    260  f0fc				   .POS       SET	0
+    261  f0fc					      REPEAT	#SCREEN_H + 1
+    262  f0fc		       00		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f0fc				   .POS       SET	.POS + 1
+    261  f0fc					      REPEND
+    262  f0fd		       00		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f0fd				   .POS       SET	.POS + 1
+    261  f0fd					      REPEND
+    262  f0fe		       00		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f0fe				   .POS       SET	.POS + 1
+    261  f0fe					      REPEND
+    262  f0ff		       00		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f0ff				   .POS       SET	.POS + 1
+    261  f0ff					      REPEND
+    262  f100		       00		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f100				   .POS       SET	.POS + 1
+    261  f100					      REPEND
+    262  f101		       00		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f101				   .POS       SET	.POS + 1
+    261  f101					      REPEND
+    262  f102		       00		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f102				   .POS       SET	.POS + 1
+    261  f102					      REPEND
+    262  f103		       00		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f103				   .POS       SET	.POS + 1
+    261  f103					      REPEND
+    262  f104		       00		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f104				   .POS       SET	.POS + 1
+    261  f104					      REPEND
+    262  f105		       00		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f105				   .POS       SET	.POS + 1
+    261  f105					      REPEND
+    262  f106		       00		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f106				   .POS       SET	.POS + 1
+    261  f106					      REPEND
+    262  f107		       00		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f107				   .POS       SET	.POS + 1
+    261  f107					      REPEND
+    262  f108		       01		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f108				   .POS       SET	.POS + 1
+    261  f108					      REPEND
+    262  f109		       01		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f109				   .POS       SET	.POS + 1
+    261  f109					      REPEND
+    262  f10a		       01		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f10a				   .POS       SET	.POS + 1
+    261  f10a					      REPEND
+    262  f10b		       01		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f10b				   .POS       SET	.POS + 1
+    261  f10b					      REPEND
+    262  f10c		       01		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f10c				   .POS       SET	.POS + 1
+    261  f10c					      REPEND
+    262  f10d		       01		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f10d				   .POS       SET	.POS + 1
+    261  f10d					      REPEND
+    262  f10e		       01		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f10e				   .POS       SET	.POS + 1
+    261  f10e					      REPEND
+    262  f10f		       01		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f10f				   .POS       SET	.POS + 1
+    261  f10f					      REPEND
+    262  f110		       01		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f110				   .POS       SET	.POS + 1
+    261  f110					      REPEND
+    262  f111		       01		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f111				   .POS       SET	.POS + 1
+    261  f111					      REPEND
+    262  f112		       01		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f112				   .POS       SET	.POS + 1
+    261  f112					      REPEND
+    262  f113		       01		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f113				   .POS       SET	.POS + 1
+    261  f113					      REPEND
+    262  f114		       02		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f114				   .POS       SET	.POS + 1
+    261  f114					      REPEND
+    262  f115		       02		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f115				   .POS       SET	.POS + 1
+    261  f115					      REPEND
+    262  f116		       02		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f116				   .POS       SET	.POS + 1
+    261  f116					      REPEND
+    262  f117		       02		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f117				   .POS       SET	.POS + 1
+    261  f117					      REPEND
+    262  f118		       02		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f118				   .POS       SET	.POS + 1
+    261  f118					      REPEND
+    262  f119		       02		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f119				   .POS       SET	.POS + 1
+    261  f119					      REPEND
+    262  f11a		       02		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f11a				   .POS       SET	.POS + 1
+    261  f11a					      REPEND
+    262  f11b		       02		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f11b				   .POS       SET	.POS + 1
+    261  f11b					      REPEND
+    262  f11c		       02		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f11c				   .POS       SET	.POS + 1
+    261  f11c					      REPEND
+    262  f11d		       02		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f11d				   .POS       SET	.POS + 1
+    261  f11d					      REPEND
+    262  f11e		       02		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f11e				   .POS       SET	.POS + 1
+    261  f11e					      REPEND
+    262  f11f		       02		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f11f				   .POS       SET	.POS + 1
+    261  f11f					      REPEND
+    262  f120		       03		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f120				   .POS       SET	.POS + 1
+    261  f120					      REPEND
+    262  f121		       03		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f121				   .POS       SET	.POS + 1
+    261  f121					      REPEND
+    262  f122		       03		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f122				   .POS       SET	.POS + 1
+    261  f122					      REPEND
+    262  f123		       03		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f123				   .POS       SET	.POS + 1
+    261  f123					      REPEND
+    262  f124		       03		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f124				   .POS       SET	.POS + 1
+    261  f124					      REPEND
+    262  f125		       03		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f125				   .POS       SET	.POS + 1
+    261  f125					      REPEND
+    262  f126		       03		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f126				   .POS       SET	.POS + 1
+    261  f126					      REPEND
+    262  f127		       03		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f127				   .POS       SET	.POS + 1
+    261  f127					      REPEND
+    262  f128		       03		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f128				   .POS       SET	.POS + 1
+    261  f128					      REPEND
+    262  f129		       03		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f129				   .POS       SET	.POS + 1
+    261  f129					      REPEND
+    262  f12a		       03		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f12a				   .POS       SET	.POS + 1
+    261  f12a					      REPEND
+    262  f12b		       03		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f12b				   .POS       SET	.POS + 1
+    261  f12b					      REPEND
+    262  f12c		       04		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f12c				   .POS       SET	.POS + 1
+    261  f12c					      REPEND
+    262  f12d		       04		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f12d				   .POS       SET	.POS + 1
+    261  f12d					      REPEND
+    262  f12e		       04		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f12e				   .POS       SET	.POS + 1
+    261  f12e					      REPEND
+    262  f12f		       04		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f12f				   .POS       SET	.POS + 1
+    261  f12f					      REPEND
+    262  f130		       04		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f130				   .POS       SET	.POS + 1
+    261  f130					      REPEND
+    262  f131		       04		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f131				   .POS       SET	.POS + 1
+    261  f131					      REPEND
+    262  f132		       04		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f132				   .POS       SET	.POS + 1
+    261  f132					      REPEND
+    262  f133		       04		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f133				   .POS       SET	.POS + 1
+    261  f133					      REPEND
+    262  f134		       04		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f134				   .POS       SET	.POS + 1
+    261  f134					      REPEND
+    262  f135		       04		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f135				   .POS       SET	.POS + 1
+    261  f135					      REPEND
+    262  f136		       04		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f136				   .POS       SET	.POS + 1
+    261  f136					      REPEND
+    262  f137		       04		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f137				   .POS       SET	.POS + 1
+    261  f137					      REPEND
+    262  f138		       05		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f138				   .POS       SET	.POS + 1
+    261  f138					      REPEND
+    262  f139		       05		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f139				   .POS       SET	.POS + 1
+    261  f139					      REPEND
+    262  f13a		       05		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f13a				   .POS       SET	.POS + 1
+    261  f13a					      REPEND
+    262  f13b		       05		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f13b				   .POS       SET	.POS + 1
+    261  f13b					      REPEND
+    262  f13c		       05		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f13c				   .POS       SET	.POS + 1
+    261  f13c					      REPEND
+    262  f13d		       05		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f13d				   .POS       SET	.POS + 1
+    261  f13d					      REPEND
+    262  f13e		       05		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f13e				   .POS       SET	.POS + 1
+    261  f13e					      REPEND
+    262  f13f		       05		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f13f				   .POS       SET	.POS + 1
+    261  f13f					      REPEND
+    262  f140		       05		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f140				   .POS       SET	.POS + 1
+    261  f140					      REPEND
+    262  f141		       05		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f141				   .POS       SET	.POS + 1
+    261  f141					      REPEND
+    262  f142		       05		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f142				   .POS       SET	.POS + 1
+    261  f142					      REPEND
+    262  f143		       05		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f143				   .POS       SET	.POS + 1
+    261  f143					      REPEND
+    262  f144		       06		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f144				   .POS       SET	.POS + 1
+    261  f144					      REPEND
+    262  f145		       06		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f145				   .POS       SET	.POS + 1
+    261  f145					      REPEND
+    262  f146		       06		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f146				   .POS       SET	.POS + 1
+    261  f146					      REPEND
+    262  f147		       06		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f147				   .POS       SET	.POS + 1
+    261  f147					      REPEND
+    262  f148		       06		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f148				   .POS       SET	.POS + 1
+    261  f148					      REPEND
+    262  f149		       06		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f149				   .POS       SET	.POS + 1
+    261  f149					      REPEND
+    262  f14a		       06		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f14a				   .POS       SET	.POS + 1
+    261  f14a					      REPEND
+    262  f14b		       06		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f14b				   .POS       SET	.POS + 1
+    261  f14b					      REPEND
+    262  f14c		       06		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f14c				   .POS       SET	.POS + 1
+    261  f14c					      REPEND
+    262  f14d		       06		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f14d				   .POS       SET	.POS + 1
+    261  f14d					      REPEND
+    262  f14e		       06		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f14e				   .POS       SET	.POS + 1
+    261  f14e					      REPEND
+    262  f14f		       06		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f14f				   .POS       SET	.POS + 1
+    261  f14f					      REPEND
+    262  f150		       07		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f150				   .POS       SET	.POS + 1
+    261  f150					      REPEND
+    262  f151		       07		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f151				   .POS       SET	.POS + 1
+    261  f151					      REPEND
+    262  f152		       07		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f152				   .POS       SET	.POS + 1
+    261  f152					      REPEND
+    262  f153		       07		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f153				   .POS       SET	.POS + 1
+    261  f153					      REPEND
+    262  f154		       07		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f154				   .POS       SET	.POS + 1
+    261  f154					      REPEND
+    262  f155		       07		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f155				   .POS       SET	.POS + 1
+    261  f155					      REPEND
+    262  f156		       07		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f156				   .POS       SET	.POS + 1
+    261  f156					      REPEND
+    262  f157		       07		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f157				   .POS       SET	.POS + 1
+    261  f157					      REPEND
+    262  f158		       07		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f158				   .POS       SET	.POS + 1
+    261  f158					      REPEND
+    262  f159		       07		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f159				   .POS       SET	.POS + 1
+    261  f159					      REPEND
+    262  f15a		       07		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f15a				   .POS       SET	.POS + 1
+    261  f15a					      REPEND
+    262  f15b		       07		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f15b				   .POS       SET	.POS + 1
+    261  f15b					      REPEND
+    262  f15c		       08		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f15c				   .POS       SET	.POS + 1
+    261  f15c					      REPEND
+    262  f15d		       08		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f15d				   .POS       SET	.POS + 1
+    261  f15d					      REPEND
+    262  f15e		       08		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f15e				   .POS       SET	.POS + 1
+    261  f15e					      REPEND
+    262  f15f		       08		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f15f				   .POS       SET	.POS + 1
+    261  f15f					      REPEND
+    262  f160		       08		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f160				   .POS       SET	.POS + 1
+    261  f160					      REPEND
+    262  f161		       08		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f161				   .POS       SET	.POS + 1
+    261  f161					      REPEND
+    262  f162		       08		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f162				   .POS       SET	.POS + 1
+    261  f162					      REPEND
+    262  f163		       08		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f163				   .POS       SET	.POS + 1
+    261  f163					      REPEND
+    262  f164		       08		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f164				   .POS       SET	.POS + 1
+    261  f164					      REPEND
+    262  f165		       08		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f165				   .POS       SET	.POS + 1
+    261  f165					      REPEND
+    262  f166		       08		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f166				   .POS       SET	.POS + 1
+    261  f166					      REPEND
+    262  f167		       08		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f167				   .POS       SET	.POS + 1
+    261  f167					      REPEND
+    262  f168		       09		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f168				   .POS       SET	.POS + 1
+    261  f168					      REPEND
+    262  f169		       09		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f169				   .POS       SET	.POS + 1
+    261  f169					      REPEND
+    262  f16a		       09		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f16a				   .POS       SET	.POS + 1
+    261  f16a					      REPEND
+    262  f16b		       09		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f16b				   .POS       SET	.POS + 1
+    261  f16b					      REPEND
+    262  f16c		       09		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f16c				   .POS       SET	.POS + 1
+    261  f16c					      REPEND
+    262  f16d		       09		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f16d				   .POS       SET	.POS + 1
+    261  f16d					      REPEND
+    262  f16e		       09		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f16e				   .POS       SET	.POS + 1
+    261  f16e					      REPEND
+    262  f16f		       09		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f16f				   .POS       SET	.POS + 1
+    261  f16f					      REPEND
+    262  f170		       09		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f170				   .POS       SET	.POS + 1
+    261  f170					      REPEND
+    262  f171		       09		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f171				   .POS       SET	.POS + 1
+    261  f171					      REPEND
+    262  f172		       09		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f172				   .POS       SET	.POS + 1
+    261  f172					      REPEND
+    262  f173		       09		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f173				   .POS       SET	.POS + 1
+    261  f173					      REPEND
+    262  f174		       0a		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f174				   .POS       SET	.POS + 1
+    261  f174					      REPEND
+    262  f175		       0a		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f175				   .POS       SET	.POS + 1
+    261  f175					      REPEND
+    262  f176		       0a		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f176				   .POS       SET	.POS + 1
+    261  f176					      REPEND
+    262  f177		       0a		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f177				   .POS       SET	.POS + 1
+    261  f177					      REPEND
+    262  f178		       0a		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f178				   .POS       SET	.POS + 1
+    261  f178					      REPEND
+    262  f179		       0a		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f179				   .POS       SET	.POS + 1
+    261  f179					      REPEND
+    262  f17a		       0a		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f17a				   .POS       SET	.POS + 1
+    261  f17a					      REPEND
+    262  f17b		       0a		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f17b				   .POS       SET	.POS + 1
+    261  f17b					      REPEND
+    262  f17c		       0a		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f17c				   .POS       SET	.POS + 1
+    261  f17c					      REPEND
+    262  f17d		       0a		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f17d				   .POS       SET	.POS + 1
+    261  f17d					      REPEND
+    262  f17e		       0a		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f17e				   .POS       SET	.POS + 1
+    261  f17e					      REPEND
+    262  f17f		       0a		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f17f				   .POS       SET	.POS + 1
+    261  f17f					      REPEND
+    262  f180		       0b		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f180				   .POS       SET	.POS + 1
+    261  f180					      REPEND
+    262  f181		       0b		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f181				   .POS       SET	.POS + 1
+    261  f181					      REPEND
+    262  f182		       0b		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f182				   .POS       SET	.POS + 1
+    261  f182					      REPEND
+    262  f183		       0b		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f183				   .POS       SET	.POS + 1
+    261  f183					      REPEND
+    262  f184		       0b		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f184				   .POS       SET	.POS + 1
+    261  f184					      REPEND
+    262  f185		       0b		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f185				   .POS       SET	.POS + 1
+    261  f185					      REPEND
+    262  f186		       0b		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f186				   .POS       SET	.POS + 1
+    261  f186					      REPEND
+    262  f187		       0b		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f187				   .POS       SET	.POS + 1
+    261  f187					      REPEND
+    262  f188		       0b		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f188				   .POS       SET	.POS + 1
+    261  f188					      REPEND
+    262  f189		       0b		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f189				   .POS       SET	.POS + 1
+    261  f189					      REPEND
+    262  f18a		       0b		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f18a				   .POS       SET	.POS + 1
+    261  f18a					      REPEND
+    262  f18b		       0b		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f18b				   .POS       SET	.POS + 1
+    261  f18b					      REPEND
+    262  f18c		       0c		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f18c				   .POS       SET	.POS + 1
+    261  f18c					      REPEND
+    262  f18d		       0c		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f18d				   .POS       SET	.POS + 1
+    261  f18d					      REPEND
+    262  f18e		       0c		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f18e				   .POS       SET	.POS + 1
+    261  f18e					      REPEND
+    262  f18f		       0c		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f18f				   .POS       SET	.POS + 1
+    261  f18f					      REPEND
+    262  f190		       0c		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f190				   .POS       SET	.POS + 1
+    261  f190					      REPEND
+    262  f191		       0c		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f191				   .POS       SET	.POS + 1
+    261  f191					      REPEND
+    262  f192		       0c		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f192				   .POS       SET	.POS + 1
+    261  f192					      REPEND
+    262  f193		       0c		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f193				   .POS       SET	.POS + 1
+    261  f193					      REPEND
+    262  f194		       0c		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f194				   .POS       SET	.POS + 1
+    261  f194					      REPEND
+    262  f195		       0c		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f195				   .POS       SET	.POS + 1
+    261  f195					      REPEND
+    262  f196		       0c		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f196				   .POS       SET	.POS + 1
+    261  f196					      REPEND
+    262  f197		       0c		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f197				   .POS       SET	.POS + 1
+    261  f197					      REPEND
+    262  f198		       0d		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f198				   .POS       SET	.POS + 1
+    261  f198					      REPEND
+    262  f199		       0d		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f199				   .POS       SET	.POS + 1
+    261  f199					      REPEND
+    262  f19a		       0d		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f19a				   .POS       SET	.POS + 1
+    261  f19a					      REPEND
+    262  f19b		       0d		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f19b				   .POS       SET	.POS + 1
+    261  f19b					      REPEND
+    262  f19c		       0d		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f19c				   .POS       SET	.POS + 1
+    261  f19c					      REPEND
+    262  f19d		       0d		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f19d				   .POS       SET	.POS + 1
+    261  f19d					      REPEND
+    262  f19e		       0d		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f19e				   .POS       SET	.POS + 1
+    261  f19e					      REPEND
+    262  f19f		       0d		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f19f				   .POS       SET	.POS + 1
+    261  f19f					      REPEND
+    262  f1a0		       0d		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1a0				   .POS       SET	.POS + 1
+    261  f1a0					      REPEND
+    262  f1a1		       0d		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1a1				   .POS       SET	.POS + 1
+    261  f1a1					      REPEND
+    262  f1a2		       0d		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1a2				   .POS       SET	.POS + 1
+    261  f1a2					      REPEND
+    262  f1a3		       0d		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1a3				   .POS       SET	.POS + 1
+    261  f1a3					      REPEND
+    262  f1a4		       0e		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1a4				   .POS       SET	.POS + 1
+    261  f1a4					      REPEND
+    262  f1a5		       0e		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1a5				   .POS       SET	.POS + 1
+    261  f1a5					      REPEND
+    262  f1a6		       0e		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1a6				   .POS       SET	.POS + 1
+    261  f1a6					      REPEND
+    262  f1a7		       0e		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1a7				   .POS       SET	.POS + 1
+    261  f1a7					      REPEND
+    262  f1a8		       0e		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1a8				   .POS       SET	.POS + 1
+    261  f1a8					      REPEND
+    262  f1a9		       0e		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1a9				   .POS       SET	.POS + 1
+    261  f1a9					      REPEND
+    262  f1aa		       0e		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1aa				   .POS       SET	.POS + 1
+    261  f1aa					      REPEND
+    262  f1ab		       0e		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1ab				   .POS       SET	.POS + 1
+    261  f1ab					      REPEND
+    262  f1ac		       0e		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1ac				   .POS       SET	.POS + 1
+    261  f1ac					      REPEND
+    262  f1ad		       0e		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1ad				   .POS       SET	.POS + 1
+    261  f1ad					      REPEND
+    262  f1ae		       0e		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1ae				   .POS       SET	.POS + 1
+    261  f1ae					      REPEND
+    262  f1af		       0e		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1af				   .POS       SET	.POS + 1
+    261  f1af					      REPEND
+    262  f1b0		       0f		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1b0				   .POS       SET	.POS + 1
+    261  f1b0					      REPEND
+    262  f1b1		       0f		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1b1				   .POS       SET	.POS + 1
+    261  f1b1					      REPEND
+    262  f1b2		       0f		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1b2				   .POS       SET	.POS + 1
+    261  f1b2					      REPEND
+    262  f1b3		       0f		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1b3				   .POS       SET	.POS + 1
+    261  f1b3					      REPEND
+    262  f1b4		       0f		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1b4				   .POS       SET	.POS + 1
+    261  f1b4					      REPEND
+    262  f1b5		       0f		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1b5				   .POS       SET	.POS + 1
+    261  f1b5					      REPEND
+    262  f1b6		       0f		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1b6				   .POS       SET	.POS + 1
+    261  f1b6					      REPEND
+    262  f1b7		       0f		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1b7				   .POS       SET	.POS + 1
+    261  f1b7					      REPEND
+    262  f1b8		       0f		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1b8				   .POS       SET	.POS + 1
+    261  f1b8					      REPEND
+    262  f1b9		       0f		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1b9				   .POS       SET	.POS + 1
+    261  f1b9					      REPEND
+    262  f1ba		       0f		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1ba				   .POS       SET	.POS + 1
+    261  f1ba					      REPEND
+    262  f1bb		       0f		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1bb				   .POS       SET	.POS + 1
+    261  f1bb					      REPEND
+    262  f1bc		       10		      .byte.b	.POS / (#SCREEN_H/#PIXEL_H)
+    263  f1bc				   .POS       SET	.POS + 1
+    264  f1bd					      REPEND
+    265  f1bd
+    266  f1bd							;------------------------------------------------------------------------
+    267  f1bd							;     _	  _ _	    ___       _        
+    268  f1bd							;    /_\ _  _ __| (_)___  |   \ __ _| |_ __ _ 
+    269  f1bd							;   / _ \ || / _` | / _ \ | |) / _` |	_/ _` |
+    270  f1bd							;  /_/ \_\_,_\__,_|_\___/ |___/\__,_|\__\__,_| 							      
+    271  f1bd							;------------------------------------------------------------------------
+    272  f1bd
+------- FILE keys_data.h LEVEL 2 PASS 2
+      0  f1bd					      include	"keys_data.h"
+      1  f1bd		       00	   KEYS_DATA  .byte.b	#0	; None
+      2  f1be		       12		      .byte.b	#18	; A4
+      3  f1bf		       1e		      .byte.b	#30	; C#4
+      4  f1c0		       1f		      .byte.b	#31	; C4
+      5  f1c1		       0f		      .byte.b	#15	; C5
+      6  f1c2		       1a		      .byte.b	#26	; D#4
+      7  f1c3		       1c		      .byte.b	#28	; D4
+      8  f1c4		       0d		      .byte.b	#13	; D5
+      9  f1c5		       18		      .byte.b	#24	; E4
+     10  f1c6		       0c		      .byte.b	#12	; E5
+     11  f1c7		       16		      .byte.b	#22	; F#4
+     12  f1c8		       17		      .byte.b	#23	; F4
+     13  f1c9		       0b		      .byte.b	#11	; F5
+     14  f1ca		       13		      .byte.b	#19	; G#4
+     15  f1cb		       14		      .byte.b	#20	; G4
+     16  f1cc		       0a		      .byte.b	#10	; G5
+------- FILE bad_apple.asm
+------- FILE audio_data.h LEVEL 2 PASS 2
+      0  f1cd					      include	"audio_data.h"
+      1  f1cd		       60	   AUD_DATA_0 .byte.b	#%01100000
+      2  f1ce		       70		      .byte.b	#%01110000
+      3  f1cf		       74		      .byte.b	#%01110100
+      4  f1d0		       76		      .byte.b	#%01110110
+      5  f1d1		       07		      .byte.b	#%00000111
+      6  f1d2		       07		      .byte.b	#%00000111
+      7  f1d3		       47		      .byte.b	#%01000111
+      8  f1d4		       06		      .byte.b	#%00000110
+      9  f1d5		       07		      .byte.b	#%00000111
+     10  f1d6		       07		      .byte.b	#%00000111
+     11  f1d7		       47		      .byte.b	#%01000111
+     12  f1d8		       60		      .byte.b	#%01100000
+     13  f1d9		       7c		      .byte.b	#%01111100
+     14  f1da		       f0		      .byte.b	#%11110000
+     15  f1db		       cf		      .byte.b	#%11001111
+     16  f1dc		       06		      .byte.b	#%00000110
+     17  f1dd		       07		      .byte.b	#%00000111
+     18  f1de		       07		      .byte.b	#%00000111
+     19  f1df		       47		      .byte.b	#%01000111
+     20  f1e0		       60		      .byte.b	#%01100000
+     21  f1e1		       70		      .byte.b	#%01110000
+     22  f1e2		       74		      .byte.b	#%01110100
+     23  f1e3		       70		      .byte.b	#%01110000
+     24  f1e4		       60		      .byte.b	#%01100000
+     25  f1e5		       70		      .byte.b	#%01110000
+     26  f1e6		       74		      .byte.b	#%01110100
+     27  f1e7		       7e		      .byte.b	#%01111110
+     28  f1e8		       0c		      .byte.b	#%00001100
+     29  f1e9		       fb		      .byte.b	#%11111011
+     30  f1ea		       07		      .byte.b	#%00000111
+     31  f1eb		       c0		      .byte.b	#%11000000
+     32  f1ec		       60		      .byte.b	#%01100000
+     33  f1ed		       70		      .byte.b	#%01110000
+     34  f1ee		       74		      .byte.b	#%01110100
+     35  f1ef		       76		      .byte.b	#%01110110
+     36  f1f0		       07		      .byte.b	#%00000111
+     37  f1f1		       07		      .byte.b	#%00000111
+     38  f1f2		       47		      .byte.b	#%01000111
+     39  f1f3		       06		      .byte.b	#%00000110
+     40  f1f4		       07		      .byte.b	#%00000111
+     41  f1f5		       07		      .byte.b	#%00000111
+     42  f1f6		       47		      .byte.b	#%01000111
+     43  f1f7		       60		      .byte.b	#%01100000
+     44  f1f8		       7c		      .byte.b	#%01111100
+     45  f1f9		       f0		      .byte.b	#%11110000
+     46  f1fa		       cf		      .byte.b	#%11001111
+     47  f1fb		       06		      .byte.b	#%00000110
+     48  f1fc		       07		      .byte.b	#%00000111
+     49  f1fd		       07		      .byte.b	#%00000111
+     50  f1fe		       47		      .byte.b	#%01000111
+     51  f1ff		       60		      .byte.b	#%01100000
+     52  f200		       70		      .byte.b	#%01110000
+     53  f201		       74		      .byte.b	#%01110100
+     54  f202		       70		      .byte.b	#%01110000
+     55  f203		       60		      .byte.b	#%01100000
+     56  f204		       70		      .byte.b	#%01110000
+     57  f205		       74		      .byte.b	#%01110100
+     58  f206		       7e		      .byte.b	#%01111110
+     59  f207		       be		      .byte.b	#%10111110
+     60  f208		       b6		      .byte.b	#%10110110
+     61  f209		       b0		      .byte.b	#%10110000
+     62  f20a		       60		      .byte.b	#%01100000
+     63  f20b		       80		      .byte.b	#%10000000
+     64  f20c		       b0		      .byte.b	#%10110000
+     65  f20d		       e0		      .byte.b	#%11100000
+     66  f20e		       10		      .byte.b	#%00010000
+     67  f20f		       00		      .byte.b	#%00000000
+     68  f210		       70		      .byte.b	#%01110000
+     69  f211		       40		      .byte.b	#%01000000
+     70  f212		       10		      .byte.b	#%00010000
+     71  f213		       00		      .byte.b	#%00000000
+     72  f214		       60		      .byte.b	#%01100000
+     73  f215		       00		      .byte.b	#%00000000
+     74  f216		       10		      .byte.b	#%00010000
+     75  f217		       e0		      .byte.b	#%11100000
+     76  f218		       b0		      .byte.b	#%10110000
+     77  f219		       80		      .byte.b	#%10000000
+     78  f21a		       60		      .byte.b	#%01100000
+     79  f21b		       80		      .byte.b	#%10000000
+     80  f21c		       b0		      .byte.b	#%10110000
+     81  f21d		       e0		      .byte.b	#%11100000
+     82  f21e		       10		      .byte.b	#%00010000
+     83  f21f		       00		      .byte.b	#%00000000
+     84  f220		       e0		      .byte.b	#%11100000
+     85  f221		       b0		      .byte.b	#%10110000
+     86  f222		       80		      .byte.b	#%10000000
+     87  f223		       60		      .byte.b	#%01100000
+     88  f224		       80		      .byte.b	#%10000000
+     89  f225		       b0		      .byte.b	#%10110000
+     90  f226		       80		      .byte.b	#%10000000
+     91  f227		       60		      .byte.b	#%01100000
+     92  f228		       20		      .byte.b	#%00100000
+     93  f229		       80		      .byte.b	#%10000000
+     94  f22a		       60		      .byte.b	#%01100000
+     95  f22b		       80		      .byte.b	#%10000000
+     96  f22c		       b0		      .byte.b	#%10110000
+     97  f22d		       e0		      .byte.b	#%11100000
+     98  f22e		       10		      .byte.b	#%00010000
+     99  f22f		       00		      .byte.b	#%00000000
+    100  f230		       70		      .byte.b	#%01110000
+    101  f231		       40		      .byte.b	#%01000000
+    102  f232		       10		      .byte.b	#%00010000
+    103  f233		       00		      .byte.b	#%00000000
+    104  f234		       60		      .byte.b	#%01100000
+    105  f235		       00		      .byte.b	#%00000000
+    106  f236		       10		      .byte.b	#%00010000
+    107  f237		       e0		      .byte.b	#%11100000
+    108  f238		       b0		      .byte.b	#%10110000
+    109  f239		       80		      .byte.b	#%10000000
+    110  f23a		       60		      .byte.b	#%01100000
+    111  f23b		       80		      .byte.b	#%10000000
+    112  f23c		       b0		      .byte.b	#%10110000
+    113  f23d		       e0		      .byte.b	#%11100000
+    114  f23e		       10		      .byte.b	#%00010000
+    115  f23f		       00		      .byte.b	#%00000000
+    116  f240		       e0		      .byte.b	#%11100000
+    117  f241		       b0		      .byte.b	#%10110000
+    118  f242		       80		      .byte.b	#%10000000
+    119  f243		       00		      .byte.b	#%00000000
+    120  f244		       b0		      .byte.b	#%10110000
+    121  f245		       00		      .byte.b	#%00000000
+    122  f246		       e0		      .byte.b	#%11100000
+    123  f247		       00		      .byte.b	#%00000000
+    124  f248		       10		      .byte.b	#%00010000
+    125  f249		       00		      .byte.b	#%00000000
+    126  f24a		       06		      .byte.b	#%00000110
+    127  f24b		       08		      .byte.b	#%00001000
+    128  f24c		       0b		      .byte.b	#%00001011
+    129  f24d		       0e		      .byte.b	#%00001110
+    130  f24e		       01		      .byte.b	#%00000001
+    131  f24f		       00		      .byte.b	#%00000000
+    132  f250		       07		      .byte.b	#%00000111
+    133  f251		       04		      .byte.b	#%00000100
+    134  f252		       01		      .byte.b	#%00000001
+    135  f253		       00		      .byte.b	#%00000000
+    136  f254		       06		      .byte.b	#%00000110
+    137  f255		       00		      .byte.b	#%00000000
+    138  f256		       01		      .byte.b	#%00000001
+    139  f257		       0e		      .byte.b	#%00001110
+    140  f258		       0b		      .byte.b	#%00001011
+    141  f259		       08		      .byte.b	#%00001000
+    142  f25a		       06		      .byte.b	#%00000110
+    143  f25b		       08		      .byte.b	#%00001000
+    144  f25c		       0b		      .byte.b	#%00001011
+    145  f25d		       0e		      .byte.b	#%00001110
+    146  f25e		       01		      .byte.b	#%00000001
+    147  f25f		       00		      .byte.b	#%00000000
+    148  f260		       0e		      .byte.b	#%00001110
+    149  f261		       0b		      .byte.b	#%00001011
+    150  f262		       08		      .byte.b	#%00001000
+    151  f263		       06		      .byte.b	#%00000110
+    152  f264		       08		      .byte.b	#%00001000
+    153  f265		       0b		      .byte.b	#%00001011
+    154  f266		       08		      .byte.b	#%00001000
+    155  f267		       06		      .byte.b	#%00000110
+    156  f268		       02		      .byte.b	#%00000010
+    157  f269		       08		      .byte.b	#%00001000
+    158  f26a		       06		      .byte.b	#%00000110
+    159  f26b		       08		      .byte.b	#%00001000
+    160  f26c		       0b		      .byte.b	#%00001011
+    161  f26d		       0e		      .byte.b	#%00001110
+    162  f26e		       01		      .byte.b	#%00000001
+    163  f26f		       00		      .byte.b	#%00000000
+    164  f270		       07		      .byte.b	#%00000111
+    165  f271		       04		      .byte.b	#%00000100
+    166  f272		       01		      .byte.b	#%00000001
+    167  f273		       00		      .byte.b	#%00000000
+    168  f274		       06		      .byte.b	#%00000110
+    169  f275		       00		      .byte.b	#%00000000
+    170  f276		       01		      .byte.b	#%00000001
+    171  f277		       0e		      .byte.b	#%00001110
+    172  f278		       0b		      .byte.b	#%00001011
+    173  f279		       08		      .byte.b	#%00001000
+    174  f27a		       06		      .byte.b	#%00000110
+    175  f27b		       08		      .byte.b	#%00001000
+    176  f27c		       0b		      .byte.b	#%00001011
+    177  f27d		       0e		      .byte.b	#%00001110
+    178  f27e		       01		      .byte.b	#%00000001
+    179  f27f		       00		      .byte.b	#%00000000
+    180  f280		       0e		      .byte.b	#%00001110
+    181  f281		       0b		      .byte.b	#%00001011
+    182  f282		       08		      .byte.b	#%00001000
+    183  f283		       00		      .byte.b	#%00000000
+    184  f284		       0b		      .byte.b	#%00001011
+    185  f285		       00		      .byte.b	#%00000000
+    186  f286		       0e		      .byte.b	#%00001110
+    187  f287		       00		      .byte.b	#%00000000
+    188  f288		       01		      .byte.b	#%00000001
+    189  f289		       00		      .byte.b	#%00000000
+    190  f28a		       00		      .byte.b	#%00000000
+    191  f28b		       40		      .byte.b	#%01000000
+    192  f28c		       70		      .byte.b	#%01110000
+    193  f28d		       10		      .byte.b	#%00010000
+    194  f28e		       e0		      .byte.b	#%11100000
+    195  f28f		       10		      .byte.b	#%00010000
+    196  f290		       00		      .byte.b	#%00000000
+    197  f291		       e0		      .byte.b	#%11100000
+    198  f292		       10		      .byte.b	#%00010000
+    199  f293		       40		      .byte.b	#%01000000
+    200  f294		       70		      .byte.b	#%01110000
+    201  f295		       10		      .byte.b	#%00010000
+    202  f296		       e0		      .byte.b	#%11100000
+    203  f297		       10		      .byte.b	#%00010000
+    204  f298		       00		      .byte.b	#%00000000
+    205  f299		       e0		      .byte.b	#%11100000
+    206  f29a		       10		      .byte.b	#%00010000
+    207  f29b		       e0		      .byte.b	#%11100000
+    208  f29c		       b0		      .byte.b	#%10110000
+    209  f29d		       80		      .byte.b	#%10000000
+    210  f29e		       30		      .byte.b	#%00110000
+    211  f29f		       60		      .byte.b	#%01100000
+    212  f2a0		       00		      .byte.b	#%00000000
+    213  f2a1		       30		      .byte.b	#%00110000
+    214  f2a2		       60		      .byte.b	#%01100000
+    215  f2a3		       80		      .byte.b	#%10000000
+    216  f2a4		       b0		      .byte.b	#%10110000
+    217  f2a5		       e0		      .byte.b	#%11100000
+    218  f2a6		       10		      .byte.b	#%00010000
+    219  f2a7		       60		      .byte.b	#%01100000
+    220  f2a8		       00		      .byte.b	#%00000000
+    221  f2a9		       10		      .byte.b	#%00010000
+    222  f2aa		       40		      .byte.b	#%01000000
+    223  f2ab		       40		      .byte.b	#%01000000
+    224  f2ac		       70		      .byte.b	#%01110000
+    225  f2ad		       10		      .byte.b	#%00010000
+    226  f2ae		       e0		      .byte.b	#%11100000
+    227  f2af		       10		      .byte.b	#%00010000
+    228  f2b0		       00		      .byte.b	#%00000000
+    229  f2b1		       e0		      .byte.b	#%11100000
+    230  f2b2		       10		      .byte.b	#%00010000
+    231  f2b3		       40		      .byte.b	#%01000000
+    232  f2b4		       70		      .byte.b	#%01110000
+    233  f2b5		       10		      .byte.b	#%00010000
+    234  f2b6		       e0		      .byte.b	#%11100000
+    235  f2b7		       10		      .byte.b	#%00010000
+    236  f2b8		       00		      .byte.b	#%00000000
+    237  f2b9		       e0		      .byte.b	#%11100000
+    238  f2ba		       10		      .byte.b	#%00010000
+    239  f2bb		       e0		      .byte.b	#%11100000
+    240  f2bc		       b0		      .byte.b	#%10110000
+    241  f2bd		       80		      .byte.b	#%10000000
+    242  f2be		       30		      .byte.b	#%00110000
+    243  f2bf		       60		      .byte.b	#%01100000
+    244  f2c0		       00		      .byte.b	#%00000000
+    245  f2c1		       30		      .byte.b	#%00110000
+    246  f2c2		       60		      .byte.b	#%01100000
+    247  f2c3		       80		      .byte.b	#%10000000
+    248  f2c4		       b0		      .byte.b	#%10110000
+    249  f2c5		       e0		      .byte.b	#%11100000
+    250  f2c6		       10		      .byte.b	#%00010000
+    251  f2c7		       60		      .byte.b	#%01100000
+    252  f2c8		       00		      .byte.b	#%00000000
+    253  f2c9		       10		      .byte.b	#%00010000
+    254  f2ca		       40		      .byte.b	#%01000000
+    255  f2cb		       40		      .byte.b	#%01000000
+    256  f2cc		       70		      .byte.b	#%01110000
+    257  f2cd
+    258  f2cd		       10	   AUD_DATA_1 .byte.b	#%00010000
+    259  f2ce		       e0		      .byte.b	#%11100000
+    260  f2cf		       10		      .byte.b	#%00010000
+    261  f2d0		       00		      .byte.b	#%00000000
+    262  f2d1		       e0		      .byte.b	#%11100000
+    263  f2d2		       10		      .byte.b	#%00010000
+    264  f2d3		       40		      .byte.b	#%01000000
+    265  f2d4		       70		      .byte.b	#%01110000
+    266  f2d5		       10		      .byte.b	#%00010000
+    267  f2d6		       e0		      .byte.b	#%11100000
+    268  f2d7		       10		      .byte.b	#%00010000
+    269  f2d8		       00		      .byte.b	#%00000000
+    270  f2d9		       e0		      .byte.b	#%11100000
+    271  f2da		       10		      .byte.b	#%00010000
+    272  f2db		       e0		      .byte.b	#%11100000
+    273  f2dc		       b0		      .byte.b	#%10110000
+    274  f2dd		       80		      .byte.b	#%10000000
+    275  f2de		       30		      .byte.b	#%00110000
+    276  f2df		       60		      .byte.b	#%01100000
+    277  f2e0		       00		      .byte.b	#%00000000
+    278  f2e1		       30		      .byte.b	#%00110000
+    279  f2e2		       60		      .byte.b	#%01100000
+    280  f2e3		       80		      .byte.b	#%10000000
+    281  f2e4		       b0		      .byte.b	#%10110000
+    282  f2e5		       e0		      .byte.b	#%11100000
+    283  f2e6		       10		      .byte.b	#%00010000
+    284  f2e7		       60		      .byte.b	#%01100000
+    285  f2e8		       00		      .byte.b	#%00000000
+    286  f2e9		       10		      .byte.b	#%00010000
+    287  f2ea		       40		      .byte.b	#%01000000
+    288  f2eb		       40		      .byte.b	#%01000000
+    289  f2ec		       70		      .byte.b	#%01110000
+    290  f2ed		       10		      .byte.b	#%00010000
+    291  f2ee		       e0		      .byte.b	#%11100000
+    292  f2ef		       10		      .byte.b	#%00010000
+    293  f2f0		       00		      .byte.b	#%00000000
+    294  f2f1		       e0		      .byte.b	#%11100000
+    295  f2f2		       10		      .byte.b	#%00010000
+    296  f2f3		       40		      .byte.b	#%01000000
+    297  f2f4		       70		      .byte.b	#%01110000
+    298  f2f5		       10		      .byte.b	#%00010000
+    299  f2f6		       e0		      .byte.b	#%11100000
+    300  f2f7		       10		      .byte.b	#%00010000
+    301  f2f8		       00		      .byte.b	#%00000000
+    302  f2f9		       70		      .byte.b	#%01110000
+    303  f2fa		       90		      .byte.b	#%10010000
+    304  f2fb		       c0		      .byte.b	#%11000000
+    305  f2fc		       90		      .byte.b	#%10010000
+    306  f2fd		       70		      .byte.b	#%01110000
+    307  f2fe		       40		      .byte.b	#%01000000
+    308  f2ff		       10		      .byte.b	#%00010000
+    309  f300		       00		      .byte.b	#%00000000
+    310  f301		       e0		      .byte.b	#%11100000
+    311  f302		       10		      .byte.b	#%00010000
+    312  f303		       e0		      .byte.b	#%11100000
+    313  f304		       b0		      .byte.b	#%10110000
+    314  f305		       80		      .byte.b	#%10000000
+    315  f306		       30		      .byte.b	#%00110000
+    316  f307		       60		      .byte.b	#%01100000
+    317  f308		       00		      .byte.b	#%00000000
+    318  f309		       10		      .byte.b	#%00010000
+    319  f30a		       40		      .byte.b	#%01000000
+    320  f30b		       40		      .byte.b	#%01000000
+    321  f30c		       70		      .byte.b	#%01110000
+    322  f30d		       10		      .byte.b	#%00010000
+    323  f30e		       e0		      .byte.b	#%11100000
+    324  f30f		       10		      .byte.b	#%00010000
+    325  f310		       00		      .byte.b	#%00000000
+    326  f311		       e0		      .byte.b	#%11100000
+    327  f312		       10		      .byte.b	#%00010000
+    328  f313		       40		      .byte.b	#%01000000
+    329  f314		       70		      .byte.b	#%01110000
+    330  f315		       10		      .byte.b	#%00010000
+    331  f316		       e0		      .byte.b	#%11100000
+    332  f317		       10		      .byte.b	#%00010000
+    333  f318		       00		      .byte.b	#%00000000
+    334  f319		       e0		      .byte.b	#%11100000
+    335  f31a		       10		      .byte.b	#%00010000
+    336  f31b		       e0		      .byte.b	#%11100000
+    337  f31c		       b0		      .byte.b	#%10110000
+    338  f31d		       80		      .byte.b	#%10000000
+    339  f31e		       30		      .byte.b	#%00110000
+    340  f31f		       60		      .byte.b	#%01100000
+    341  f320		       00		      .byte.b	#%00000000
+    342  f321		       30		      .byte.b	#%00110000
+    343  f322		       60		      .byte.b	#%01100000
+    344  f323		       80		      .byte.b	#%10000000
+    345  f324		       b0		      .byte.b	#%10110000
+    346  f325		       e0		      .byte.b	#%11100000
+    347  f326		       10		      .byte.b	#%00010000
+    348  f327		       60		      .byte.b	#%01100000
+    349  f328		       00		      .byte.b	#%00000000
+    350  f329		       10		      .byte.b	#%00010000
+    351  f32a		       40		      .byte.b	#%01000000
+    352  f32b		       40		      .byte.b	#%01000000
+    353  f32c		       70		      .byte.b	#%01110000
+    354  f32d		       10		      .byte.b	#%00010000
+    355  f32e		       e0		      .byte.b	#%11100000
+    356  f32f		       10		      .byte.b	#%00010000
+    357  f330		       00		      .byte.b	#%00000000
+    358  f331		       e0		      .byte.b	#%11100000
+    359  f332		       10		      .byte.b	#%00010000
+    360  f333		       40		      .byte.b	#%01000000
+    361  f334		       70		      .byte.b	#%01110000
+    362  f335		       10		      .byte.b	#%00010000
+    363  f336		       e0		      .byte.b	#%11100000
+    364  f337		       10		      .byte.b	#%00010000
+    365  f338		       00		      .byte.b	#%00000000
+    366  f339		       e0		      .byte.b	#%11100000
+    367  f33a		       10		      .byte.b	#%00010000
+    368  f33b		       e0		      .byte.b	#%11100000
+    369  f33c		       b0		      .byte.b	#%10110000
+    370  f33d		       80		      .byte.b	#%10000000
+    371  f33e		       30		      .byte.b	#%00110000
+    372  f33f		       60		      .byte.b	#%01100000
+    373  f340		       00		      .byte.b	#%00000000
+    374  f341		       30		      .byte.b	#%00110000
+    375  f342		       60		      .byte.b	#%01100000
+    376  f343		       80		      .byte.b	#%10000000
+    377  f344		       b0		      .byte.b	#%10110000
+    378  f345		       e0		      .byte.b	#%11100000
+    379  f346		       10		      .byte.b	#%00010000
+    380  f347		       60		      .byte.b	#%01100000
+    381  f348		       00		      .byte.b	#%00000000
+    382  f349		       10		      .byte.b	#%00010000
+    383  f34a		       40		      .byte.b	#%01000000
+    384  f34b		       40		      .byte.b	#%01000000
+    385  f34c		       70		      .byte.b	#%01110000
+    386  f34d		       10		      .byte.b	#%00010000
+    387  f34e		       e0		      .byte.b	#%11100000
+    388  f34f		       10		      .byte.b	#%00010000
+    389  f350		       00		      .byte.b	#%00000000
+    390  f351		       e0		      .byte.b	#%11100000
+    391  f352		       10		      .byte.b	#%00010000
+    392  f353		       40		      .byte.b	#%01000000
+    393  f354		       70		      .byte.b	#%01110000
+    394  f355		       10		      .byte.b	#%00010000
+    395  f356		       e0		      .byte.b	#%11100000
+    396  f357		       10		      .byte.b	#%00010000
+    397  f358		       00		      .byte.b	#%00000000
+    398  f359		       e0		      .byte.b	#%11100000
+    399  f35a		       10		      .byte.b	#%00010000
+    400  f35b		       e0		      .byte.b	#%11100000
+    401  f35c		       b0		      .byte.b	#%10110000
+    402  f35d		       80		      .byte.b	#%10000000
+    403  f35e		       30		      .byte.b	#%00110000
+    404  f35f		       60		      .byte.b	#%01100000
+    405  f360		       00		      .byte.b	#%00000000
+    406  f361		       30		      .byte.b	#%00110000
+    407  f362		       60		      .byte.b	#%01100000
+    408  f363		       80		      .byte.b	#%10000000
+    409  f364		       b0		      .byte.b	#%10110000
+    410  f365		       e0		      .byte.b	#%11100000
+    411  f366		       10		      .byte.b	#%00010000
+    412  f367		       60		      .byte.b	#%01100000
+    413  f368		       00		      .byte.b	#%00000000
+    414  f369		       10		      .byte.b	#%00010000
+    415  f36a		       40		      .byte.b	#%01000000
+    416  f36b		       40		      .byte.b	#%01000000
+    417  f36c		       70		      .byte.b	#%01110000
+    418  f36d		       10		      .byte.b	#%00010000
+    419  f36e		       e0		      .byte.b	#%11100000
+    420  f36f		       10		      .byte.b	#%00010000
+    421  f370		       00		      .byte.b	#%00000000
+    422  f371		       e0		      .byte.b	#%11100000
+    423  f372		       10		      .byte.b	#%00010000
+    424  f373		       40		      .byte.b	#%01000000
+    425  f374		       70		      .byte.b	#%01110000
+    426  f375		       10		      .byte.b	#%00010000
+    427  f376		       e0		      .byte.b	#%11100000
+    428  f377		       10		      .byte.b	#%00010000
+    429  f378		       00		      .byte.b	#%00000000
+    430  f379		       70		      .byte.b	#%01110000
+    431  f37a		       90		      .byte.b	#%10010000
+    432  f37b		       c0		      .byte.b	#%11000000
+    433  f37c		       90		      .byte.b	#%10010000
+    434  f37d		       70		      .byte.b	#%01110000
+    435  f37e		       40		      .byte.b	#%01000000
+    436  f37f		       10		      .byte.b	#%00010000
+    437  f380		       00		      .byte.b	#%00000000
+    438  f381		       e0		      .byte.b	#%11100000
+    439  f382		       10		      .byte.b	#%00010000
+    440  f383		       e0		      .byte.b	#%11100000
+    441  f384		       b0		      .byte.b	#%10110000
+    442  f385		       80		      .byte.b	#%10000000
+    443  f386		       30		      .byte.b	#%00110000
+    444  f387		       60		      .byte.b	#%01100000
+    445  f388		       00		      .byte.b	#%00000000
+    446  f389		       00		      .byte.b	#%00000000
+    447  f38a		       00		      .byte.b	#%00000000
+    448  f38b		       60		      .byte.b	#%01100000
+    449  f38c		       70		      .byte.b	#%01110000
+    450  f38d		       74		      .byte.b	#%01110100
+    451  f38e		       76		      .byte.b	#%01110110
+    452  f38f		       07		      .byte.b	#%00000111
+    453  f390		       07		      .byte.b	#%00000111
+    454  f391		       47		      .byte.b	#%01000111
+    455  f392		       06		      .byte.b	#%00000110
+    456  f393		       07		      .byte.b	#%00000111
+    457  f394		       07		      .byte.b	#%00000111
+    458  f395		       47		      .byte.b	#%01000111
+    459  f396		       60		      .byte.b	#%01100000
+    460  f397		       7c		      .byte.b	#%01111100
+    461  f398		       f0		      .byte.b	#%11110000
+    462  f399		       cf		      .byte.b	#%11001111
+    463  f39a		       06		      .byte.b	#%00000110
+    464  f39b		       07		      .byte.b	#%00000111
+    465  f39c		       07		      .byte.b	#%00000111
+    466  f39d		       47		      .byte.b	#%01000111
+    467  f39e		       60		      .byte.b	#%01100000
+    468  f39f		       70		      .byte.b	#%01110000
+    469  f3a0		       74		      .byte.b	#%01110100
+    470  f3a1		       70		      .byte.b	#%01110000
+    471  f3a2		       60		      .byte.b	#%01100000
+    472  f3a3		       70		      .byte.b	#%01110000
+    473  f3a4		       74		      .byte.b	#%01110100
+    474  f3a5		       7e		      .byte.b	#%01111110
+    475  f3a6		       0c		      .byte.b	#%00001100
+    476  f3a7		       fb		      .byte.b	#%11111011
+    477  f3a8		       07		      .byte.b	#%00000111
+    478  f3a9		       c0		      .byte.b	#%11000000
+    479  f3aa		       60		      .byte.b	#%01100000
+    480  f3ab		       70		      .byte.b	#%01110000
+    481  f3ac		       74		      .byte.b	#%01110100
+    482  f3ad		       76		      .byte.b	#%01110110
+    483  f3ae		       07		      .byte.b	#%00000111
+    484  f3af		       07		      .byte.b	#%00000111
+    485  f3b0		       47		      .byte.b	#%01000111
+    486  f3b1		       06		      .byte.b	#%00000110
+    487  f3b2		       07		      .byte.b	#%00000111
+    488  f3b3		       07		      .byte.b	#%00000111
+    489  f3b4		       47		      .byte.b	#%01000111
+    490  f3b5		       60		      .byte.b	#%01100000
+    491  f3b6		       7c		      .byte.b	#%01111100
+    492  f3b7		       f0		      .byte.b	#%11110000
+    493  f3b8		       cf		      .byte.b	#%11001111
+    494  f3b9		       06		      .byte.b	#%00000110
+    495  f3ba		       07		      .byte.b	#%00000111
+    496  f3bb		       07		      .byte.b	#%00000111
+    497  f3bc		       47		      .byte.b	#%01000111
+    498  f3bd		       60		      .byte.b	#%01100000
+    499  f3be		       70		      .byte.b	#%01110000
+    500  f3bf		       74		      .byte.b	#%01110100
+    501  f3c0		       70		      .byte.b	#%01110000
+    502  f3c1		       60		      .byte.b	#%01100000
+    503  f3c2		       70		      .byte.b	#%01110000
+    504  f3c3		       74		      .byte.b	#%01110100
+    505  f3c4		       7e		      .byte.b	#%01111110
+    506  f3c5		       be		      .byte.b	#%10111110
+    507  f3c6		       b6		      .byte.b	#%10110110
+    508  f3c7		       b0		      .byte.b	#%10110000
+    509  f3c8		       60		      .byte.b	#%01100000
+    510  f3c9		       80		      .byte.b	#%10000000
+    511  f3ca		       b0		      .byte.b	#%10110000
+    512  f3cb		       e0		      .byte.b	#%11100000
+    513  f3cc		       10		      .byte.b	#%00010000
+    514  f3cd
+    515  f3cd		       00	   AUD_DATA_2 .byte.b	#%00000000
+    516  f3ce		       70		      .byte.b	#%01110000
+    517  f3cf		       40		      .byte.b	#%01000000
+    518  f3d0		       10		      .byte.b	#%00010000
+    519  f3d1		       00		      .byte.b	#%00000000
+    520  f3d2		       60		      .byte.b	#%01100000
+    521  f3d3		       00		      .byte.b	#%00000000
+    522  f3d4		       10		      .byte.b	#%00010000
+    523  f3d5		       e0		      .byte.b	#%11100000
+    524  f3d6		       b0		      .byte.b	#%10110000
+    525  f3d7		       80		      .byte.b	#%10000000
+    526  f3d8		       60		      .byte.b	#%01100000
+    527  f3d9		       80		      .byte.b	#%10000000
+    528  f3da		       b0		      .byte.b	#%10110000
+    529  f3db		       e0		      .byte.b	#%11100000
+    530  f3dc		       10		      .byte.b	#%00010000
+    531  f3dd		       00		      .byte.b	#%00000000
+    532  f3de		       e0		      .byte.b	#%11100000
+    533  f3df		       b0		      .byte.b	#%10110000
+    534  f3e0		       80		      .byte.b	#%10000000
+    535  f3e1		       60		      .byte.b	#%01100000
+    536  f3e2		       80		      .byte.b	#%10000000
+    537  f3e3		       b0		      .byte.b	#%10110000
+    538  f3e4		       80		      .byte.b	#%10000000
+    539  f3e5		       60		      .byte.b	#%01100000
+    540  f3e6		       20		      .byte.b	#%00100000
+    541  f3e7		       80		      .byte.b	#%10000000
+    542  f3e8		       60		      .byte.b	#%01100000
+    543  f3e9		       80		      .byte.b	#%10000000
+    544  f3ea		       b0		      .byte.b	#%10110000
+    545  f3eb		       e0		      .byte.b	#%11100000
+    546  f3ec		       10		      .byte.b	#%00010000
+    547  f3ed		       00		      .byte.b	#%00000000
+    548  f3ee		       70		      .byte.b	#%01110000
+    549  f3ef		       40		      .byte.b	#%01000000
+    550  f3f0		       10		      .byte.b	#%00010000
+    551  f3f1		       00		      .byte.b	#%00000000
+    552  f3f2		       60		      .byte.b	#%01100000
+    553  f3f3		       00		      .byte.b	#%00000000
+    554  f3f4		       10		      .byte.b	#%00010000
+    555  f3f5		       e0		      .byte.b	#%11100000
+    556  f3f6		       b0		      .byte.b	#%10110000
+    557  f3f7		       80		      .byte.b	#%10000000
+    558  f3f8		       60		      .byte.b	#%01100000
+    559  f3f9		       80		      .byte.b	#%10000000
+    560  f3fa		       b0		      .byte.b	#%10110000
+    561  f3fb		       e0		      .byte.b	#%11100000
+    562  f3fc		       10		      .byte.b	#%00010000
+    563  f3fd		       00		      .byte.b	#%00000000
+    564  f3fe		       e0		      .byte.b	#%11100000
+    565  f3ff		       b0		      .byte.b	#%10110000
+    566  f400		       80		      .byte.b	#%10000000
+    567  f401		       00		      .byte.b	#%00000000
+    568  f402		       b0		      .byte.b	#%10110000
+    569  f403		       00		      .byte.b	#%00000000
+    570  f404		       e0		      .byte.b	#%11100000
+    571  f405		       00		      .byte.b	#%00000000
+    572  f406		       10		      .byte.b	#%00010000
+    573  f407		       00		      .byte.b	#%00000000
+    574  f408		       06		      .byte.b	#%00000110
+    575  f409		       08		      .byte.b	#%00001000
+    576  f40a		       0b		      .byte.b	#%00001011
+    577  f40b		       0e		      .byte.b	#%00001110
+    578  f40c		       01		      .byte.b	#%00000001
+    579  f40d		       00		      .byte.b	#%00000000
+    580  f40e		       07		      .byte.b	#%00000111
+    581  f40f		       04		      .byte.b	#%00000100
+    582  f410		       01		      .byte.b	#%00000001
+    583  f411		       00		      .byte.b	#%00000000
+    584  f412		       06		      .byte.b	#%00000110
+    585  f413		       00		      .byte.b	#%00000000
+    586  f414		       01		      .byte.b	#%00000001
+    587  f415		       0e		      .byte.b	#%00001110
+    588  f416		       0b		      .byte.b	#%00001011
+    589  f417		       08		      .byte.b	#%00001000
+    590  f418		       06		      .byte.b	#%00000110
+    591  f419		       08		      .byte.b	#%00001000
+    592  f41a		       0b		      .byte.b	#%00001011
+    593  f41b		       0e		      .byte.b	#%00001110
+    594  f41c		       01		      .byte.b	#%00000001
+    595  f41d		       00		      .byte.b	#%00000000
+    596  f41e		       0e		      .byte.b	#%00001110
+    597  f41f		       0b		      .byte.b	#%00001011
+    598  f420		       08		      .byte.b	#%00001000
+    599  f421		       06		      .byte.b	#%00000110
+    600  f422		       08		      .byte.b	#%00001000
+    601  f423		       0b		      .byte.b	#%00001011
+    602  f424		       08		      .byte.b	#%00001000
+    603  f425		       06		      .byte.b	#%00000110
+    604  f426		       02		      .byte.b	#%00000010
+    605  f427		       08		      .byte.b	#%00001000
+    606  f428		       06		      .byte.b	#%00000110
+    607  f429		       08		      .byte.b	#%00001000
+    608  f42a		       0b		      .byte.b	#%00001011
+    609  f42b		       0e		      .byte.b	#%00001110
+    610  f42c		       01		      .byte.b	#%00000001
+    611  f42d		       00		      .byte.b	#%00000000
+    612  f42e		       07		      .byte.b	#%00000111
+    613  f42f		       04		      .byte.b	#%00000100
+    614  f430		       01		      .byte.b	#%00000001
+    615  f431		       00		      .byte.b	#%00000000
+    616  f432		       06		      .byte.b	#%00000110
+    617  f433		       00		      .byte.b	#%00000000
+    618  f434		       01		      .byte.b	#%00000001
+    619  f435		       0e		      .byte.b	#%00001110
+    620  f436		       0b		      .byte.b	#%00001011
+    621  f437		       08		      .byte.b	#%00001000
+    622  f438		       06		      .byte.b	#%00000110
+    623  f439		       08		      .byte.b	#%00001000
+    624  f43a		       0b		      .byte.b	#%00001011
+    625  f43b		       0e		      .byte.b	#%00001110
+    626  f43c		       01		      .byte.b	#%00000001
+    627  f43d		       00		      .byte.b	#%00000000
+    628  f43e		       0e		      .byte.b	#%00001110
+    629  f43f		       0b		      .byte.b	#%00001011
+    630  f440		       08		      .byte.b	#%00001000
+    631  f441		       00		      .byte.b	#%00000000
+    632  f442		       0b		      .byte.b	#%00001011
+    633  f443		       00		      .byte.b	#%00000000
+    634  f444		       0e		      .byte.b	#%00001110
+    635  f445		       00		      .byte.b	#%00000000
+    636  f446		       01		      .byte.b	#%00000001
+    637  f447		       00		      .byte.b	#%00000000
+    638  f448		       00		      .byte.b	#%00000000
+    639  f449		       40		      .byte.b	#%01000000
+    640  f44a		       70		      .byte.b	#%01110000
+    641  f44b		       10		      .byte.b	#%00010000
+    642  f44c		       e0		      .byte.b	#%11100000
+    643  f44d		       10		      .byte.b	#%00010000
+    644  f44e		       00		      .byte.b	#%00000000
+    645  f44f		       e0		      .byte.b	#%11100000
+    646  f450		       10		      .byte.b	#%00010000
+    647  f451		       40		      .byte.b	#%01000000
+    648  f452		       70		      .byte.b	#%01110000
+    649  f453		       10		      .byte.b	#%00010000
+    650  f454		       e0		      .byte.b	#%11100000
+    651  f455		       10		      .byte.b	#%00010000
+    652  f456		       00		      .byte.b	#%00000000
+    653  f457		       e0		      .byte.b	#%11100000
+    654  f458		       10		      .byte.b	#%00010000
+    655  f459		       e0		      .byte.b	#%11100000
+    656  f45a		       b0		      .byte.b	#%10110000
+    657  f45b		       80		      .byte.b	#%10000000
+    658  f45c		       30		      .byte.b	#%00110000
+    659  f45d		       60		      .byte.b	#%01100000
+    660  f45e		       00		      .byte.b	#%00000000
+    661  f45f		       30		      .byte.b	#%00110000
+    662  f460		       60		      .byte.b	#%01100000
+    663  f461		       80		      .byte.b	#%10000000
+    664  f462		       b0		      .byte.b	#%10110000
+    665  f463		       e0		      .byte.b	#%11100000
+    666  f464		       10		      .byte.b	#%00010000
+    667  f465		       60		      .byte.b	#%01100000
+    668  f466		       00		      .byte.b	#%00000000
+    669  f467		       10		      .byte.b	#%00010000
+    670  f468		       40		      .byte.b	#%01000000
+    671  f469		       40		      .byte.b	#%01000000
+    672  f46a		       70		      .byte.b	#%01110000
+    673  f46b		       10		      .byte.b	#%00010000
+    674  f46c		       e0		      .byte.b	#%11100000
+    675  f46d		       10		      .byte.b	#%00010000
+    676  f46e		       00		      .byte.b	#%00000000
+    677  f46f		       e0		      .byte.b	#%11100000
+    678  f470		       10		      .byte.b	#%00010000
+    679  f471		       40		      .byte.b	#%01000000
+    680  f472		       70		      .byte.b	#%01110000
+    681  f473		       10		      .byte.b	#%00010000
+    682  f474		       e0		      .byte.b	#%11100000
+    683  f475		       10		      .byte.b	#%00010000
+    684  f476		       00		      .byte.b	#%00000000
+    685  f477		       e0		      .byte.b	#%11100000
+    686  f478		       10		      .byte.b	#%00010000
+    687  f479		       e0		      .byte.b	#%11100000
+    688  f47a		       b0		      .byte.b	#%10110000
+    689  f47b		       80		      .byte.b	#%10000000
+    690  f47c		       30		      .byte.b	#%00110000
+    691  f47d		       60		      .byte.b	#%01100000
+    692  f47e		       00		      .byte.b	#%00000000
+    693  f47f		       30		      .byte.b	#%00110000
+    694  f480		       60		      .byte.b	#%01100000
+    695  f481		       80		      .byte.b	#%10000000
+    696  f482		       b0		      .byte.b	#%10110000
+    697  f483		       e0		      .byte.b	#%11100000
+    698  f484		       10		      .byte.b	#%00010000
+    699  f485		       60		      .byte.b	#%01100000
+    700  f486		       00		      .byte.b	#%00000000
+    701  f487		       10		      .byte.b	#%00010000
+    702  f488		       40		      .byte.b	#%01000000
+    703  f489		       40		      .byte.b	#%01000000
+    704  f48a		       70		      .byte.b	#%01110000
+    705  f48b		       10		      .byte.b	#%00010000
+    706  f48c		       e0		      .byte.b	#%11100000
+    707  f48d		       10		      .byte.b	#%00010000
+    708  f48e		       00		      .byte.b	#%00000000
+    709  f48f		       e0		      .byte.b	#%11100000
+    710  f490		       10		      .byte.b	#%00010000
+    711  f491		       40		      .byte.b	#%01000000
+    712  f492		       70		      .byte.b	#%01110000
+    713  f493		       10		      .byte.b	#%00010000
+    714  f494		       e0		      .byte.b	#%11100000
+    715  f495		       10		      .byte.b	#%00010000
+    716  f496		       00		      .byte.b	#%00000000
+    717  f497		       e0		      .byte.b	#%11100000
+    718  f498		       10		      .byte.b	#%00010000
+    719  f499		       e0		      .byte.b	#%11100000
+    720  f49a		       b0		      .byte.b	#%10110000
+    721  f49b		       80		      .byte.b	#%10000000
+    722  f49c		       30		      .byte.b	#%00110000
+    723  f49d		       60		      .byte.b	#%01100000
+    724  f49e		       00		      .byte.b	#%00000000
+    725  f49f		       30		      .byte.b	#%00110000
+    726  f4a0		       60		      .byte.b	#%01100000
+    727  f4a1		       80		      .byte.b	#%10000000
+    728  f4a2		       b0		      .byte.b	#%10110000
+    729  f4a3		       e0		      .byte.b	#%11100000
+    730  f4a4		       10		      .byte.b	#%00010000
+    731  f4a5		       60		      .byte.b	#%01100000
+    732  f4a6		       00		      .byte.b	#%00000000
+    733  f4a7		       10		      .byte.b	#%00010000
+    734  f4a8		       40		      .byte.b	#%01000000
+    735  f4a9		       40		      .byte.b	#%01000000
+    736  f4aa		       70		      .byte.b	#%01110000
+    737  f4ab		       10		      .byte.b	#%00010000
+    738  f4ac		       e0		      .byte.b	#%11100000
+    739  f4ad		       10		      .byte.b	#%00010000
+    740  f4ae		       00		      .byte.b	#%00000000
+    741  f4af		       e0		      .byte.b	#%11100000
+    742  f4b0		       10		      .byte.b	#%00010000
+    743  f4b1		       40		      .byte.b	#%01000000
+    744  f4b2		       70		      .byte.b	#%01110000
+    745  f4b3		       10		      .byte.b	#%00010000
+    746  f4b4		       e0		      .byte.b	#%11100000
+    747  f4b5		       10		      .byte.b	#%00010000
+    748  f4b6		       00		      .byte.b	#%00000000
+    749  f4b7		       70		      .byte.b	#%01110000
+    750  f4b8		       90		      .byte.b	#%10010000
+    751  f4b9		       c0		      .byte.b	#%11000000
+    752  f4ba		       90		      .byte.b	#%10010000
+    753  f4bb		       70		      .byte.b	#%01110000
+    754  f4bc		       40		      .byte.b	#%01000000
+    755  f4bd		       10		      .byte.b	#%00010000
+    756  f4be		       00		      .byte.b	#%00000000
+    757  f4bf		       e0		      .byte.b	#%11100000
+    758  f4c0		       10		      .byte.b	#%00010000
+    759  f4c1		       e0		      .byte.b	#%11100000
+    760  f4c2		       b0		      .byte.b	#%10110000
+    761  f4c3		       80		      .byte.b	#%10000000
+    762  f4c4		       30		      .byte.b	#%00110000
+    763  f4c5		       60		      .byte.b	#%01100000
+    764  f4c6		       00		      .byte.b	#%00000000
+    765  f4c7		       10		      .byte.b	#%00010000
+    766  f4c8		       40		      .byte.b	#%01000000
+    767  f4c9		       40		      .byte.b	#%01000000
+    768  f4ca		       60		      .byte.b	#%01100000
+    769  f4cb		       10		      .byte.b	#%00010000
+    770  f4cc		       d0		      .byte.b	#%11010000
+    771  f4cd
+    772  f4cd		       10	   AUD_DATA_3 .byte.b	#%00010000
+    773  f4ce		       00		      .byte.b	#%00000000
+    774  f4cf		       d0		      .byte.b	#%11010000
+    775  f4d0		       10		      .byte.b	#%00010000
+    776  f4d1		       40		      .byte.b	#%01000000
+    777  f4d2		       60		      .byte.b	#%01100000
+    778  f4d3		       10		      .byte.b	#%00010000
+    779  f4d4		       d0		      .byte.b	#%11010000
+    780  f4d5		       10		      .byte.b	#%00010000
+    781  f4d6		       00		      .byte.b	#%00000000
+    782  f4d7		       d0		      .byte.b	#%11010000
+    783  f4d8		       10		      .byte.b	#%00010000
+    784  f4d9		       d0		      .byte.b	#%11010000
+    785  f4da		       a0		      .byte.b	#%10100000
+    786  f4db		       b0		      .byte.b	#%10110000
+    787  f4dc		       20		      .byte.b	#%00100000
+    788  f4dd		       50		      .byte.b	#%01010000
+    789  f4de		       00		      .byte.b	#%00000000
+    790  f4df		       20		      .byte.b	#%00100000
+    791  f4e0		       50		      .byte.b	#%01010000
+    792  f4e1		       b0		      .byte.b	#%10110000
+    793  f4e2		       a0		      .byte.b	#%10100000
+    794  f4e3		       d0		      .byte.b	#%11010000
+    795  f4e4		       10		      .byte.b	#%00010000
+    796  f4e5		       50		      .byte.b	#%01010000
+    797  f4e6		       00		      .byte.b	#%00000000
+    798  f4e7		       10		      .byte.b	#%00010000
+    799  f4e8		       40		      .byte.b	#%01000000
+    800  f4e9		       40		      .byte.b	#%01000000
+    801  f4ea		       60		      .byte.b	#%01100000
+    802  f4eb		       10		      .byte.b	#%00010000
+    803  f4ec		       d0		      .byte.b	#%11010000
+    804  f4ed		       10		      .byte.b	#%00010000
+    805  f4ee		       00		      .byte.b	#%00000000
+    806  f4ef		       d0		      .byte.b	#%11010000
+    807  f4f0		       10		      .byte.b	#%00010000
+    808  f4f1		       40		      .byte.b	#%01000000
+    809  f4f2		       60		      .byte.b	#%01100000
+    810  f4f3		       10		      .byte.b	#%00010000
+    811  f4f4		       d0		      .byte.b	#%11010000
+    812  f4f5		       10		      .byte.b	#%00010000
+    813  f4f6		       00		      .byte.b	#%00000000
+    814  f4f7		       d0		      .byte.b	#%11010000
+    815  f4f8		       10		      .byte.b	#%00010000
+    816  f4f9		       d0		      .byte.b	#%11010000
+    817  f4fa		       a0		      .byte.b	#%10100000
+    818  f4fb		       b0		      .byte.b	#%10110000
+    819  f4fc		       20		      .byte.b	#%00100000
+    820  f4fd		       50		      .byte.b	#%01010000
+    821  f4fe		       00		      .byte.b	#%00000000
+    822  f4ff		       20		      .byte.b	#%00100000
+    823  f500		       50		      .byte.b	#%01010000
+    824  f501		       b0		      .byte.b	#%10110000
+    825  f502		       a0		      .byte.b	#%10100000
+    826  f503		       d0		      .byte.b	#%11010000
+    827  f504		       10		      .byte.b	#%00010000
+    828  f505		       50		      .byte.b	#%01010000
+    829  f506		       00		      .byte.b	#%00000000
+    830  f507		       10		      .byte.b	#%00010000
+    831  f508		       40		      .byte.b	#%01000000
+    832  f509		       40		      .byte.b	#%01000000
+    833  f50a		       60		      .byte.b	#%01100000
+    834  f50b		       10		      .byte.b	#%00010000
+    835  f50c		       d0		      .byte.b	#%11010000
+    836  f50d		       10		      .byte.b	#%00010000
+    837  f50e		       00		      .byte.b	#%00000000
+    838  f50f		       d0		      .byte.b	#%11010000
+    839  f510		       10		      .byte.b	#%00010000
+    840  f511		       40		      .byte.b	#%01000000
+    841  f512		       60		      .byte.b	#%01100000
+    842  f513		       10		      .byte.b	#%00010000
+    843  f514		       d0		      .byte.b	#%11010000
+    844  f515		       10		      .byte.b	#%00010000
+    845  f516		       00		      .byte.b	#%00000000
+    846  f517		       d0		      .byte.b	#%11010000
+    847  f518		       10		      .byte.b	#%00010000
+    848  f519		       d0		      .byte.b	#%11010000
+    849  f51a		       a0		      .byte.b	#%10100000
+    850  f51b		       b0		      .byte.b	#%10110000
+    851  f51c		       20		      .byte.b	#%00100000
+    852  f51d		       50		      .byte.b	#%01010000
+    853  f51e		       00		      .byte.b	#%00000000
+    854  f51f		       20		      .byte.b	#%00100000
+    855  f520		       50		      .byte.b	#%01010000
+    856  f521		       b0		      .byte.b	#%10110000
+    857  f522		       a0		      .byte.b	#%10100000
+    858  f523		       d0		      .byte.b	#%11010000
+    859  f524		       10		      .byte.b	#%00010000
+    860  f525		       50		      .byte.b	#%01010000
+    861  f526		       00		      .byte.b	#%00000000
+    862  f527		       10		      .byte.b	#%00010000
+    863  f528		       40		      .byte.b	#%01000000
+    864  f529		       40		      .byte.b	#%01000000
+    865  f52a		       60		      .byte.b	#%01100000
+    866  f52b		       10		      .byte.b	#%00010000
+    867  f52c		       d0		      .byte.b	#%11010000
+    868  f52d		       10		      .byte.b	#%00010000
+    869  f52e		       00		      .byte.b	#%00000000
+    870  f52f		       d0		      .byte.b	#%11010000
+    871  f530		       10		      .byte.b	#%00010000
+    872  f531		       40		      .byte.b	#%01000000
+    873  f532		       60		      .byte.b	#%01100000
+    874  f533		       10		      .byte.b	#%00010000
+    875  f534		       d0		      .byte.b	#%11010000
+    876  f535		       10		      .byte.b	#%00010000
+    877  f536		       00		      .byte.b	#%00000000
+    878  f537		       60		      .byte.b	#%01100000
+    879  f538		       c0		      .byte.b	#%11000000
+    880  f539		       c0		      .byte.b	#%11000000
+    881  f53a		       c0		      .byte.b	#%11000000
+    882  f53b		       60		      .byte.b	#%01100000
+    883  f53c		       40		      .byte.b	#%01000000
+    884  f53d		       10		      .byte.b	#%00010000
+    885  f53e		       00		      .byte.b	#%00000000
+    886  f53f		       d0		      .byte.b	#%11010000
+    887  f540		       10		      .byte.b	#%00010000
+    888  f541		       d0		      .byte.b	#%11010000
+    889  f542		       a0		      .byte.b	#%10100000
+    890  f543		       b0		      .byte.b	#%10110000
+    891  f544		       20		      .byte.b	#%00100000
+------- FILE bad_apple.asm
+    275  f545
+    276  f545							;------------------------------------------------------------------------
+    277  f545							;  ___ 		       ___	 _	  
+    278  f545							; / __| __ _ _ ___ ___ _ _   |   \ __ _| |_ __ _ 
+    279  f545							; \__ \/ _| '_/ -_) -_) ' \  | |) / _` |  _/ _` |
+    280  f545							; |___/\__|_| \___\___|_||_| |___/\__,_|\__\__,_|
+    281  f545							;------------------------------------------------------------------------
+    282  f545
+------- FILE screen_data.h LEVEL 2 PASS 2
+      0  f545					      include	"screen_data.h"
+      1  f545		       00	   SCREEN_0_DATA_0 .byte.b	#%00000000
+      2  f546		       00		      .byte.b	#%00000000
+      3  f547		       00		      .byte.b	#%00000000
+      4  f548		       00		      .byte.b	#%00000000
+      5  f549		       00		      .byte.b	#%00000000
+      6  f54a		       00		      .byte.b	#%00000000
+      7  f54b		       00		      .byte.b	#%00000000
+      8  f54c		       00		      .byte.b	#%00000000
+      9  f54d		       00		      .byte.b	#%00000000
+     10  f54e		       00		      .byte.b	#%00000000
+     11  f54f		       00		      .byte.b	#%00000000
+     12  f550		       00		      .byte.b	#%00000000
+     13  f551		       00		      .byte.b	#%00000000
+     14  f552		       00		      .byte.b	#%00000000
+     15  f553		       00		      .byte.b	#%00000000
+     16  f554		       00		      .byte.b	#%00000000
+     17  f555		       ff		      .byte.b	#%11111111
+     18  f556		       ff		      .byte.b	#%11111111
+     19  f557		       ff		      .byte.b	#%11111111
+     20  f558		       ff		      .byte.b	#%11111111
+     21  f559		       3f		      .byte.b	#%00111111
+     22  f55a		       1f		      .byte.b	#%00011111
+     23  f55b		       1f		      .byte.b	#%00011111
+     24  f55c		       3f		      .byte.b	#%00111111
+     25  f55d		       3f		      .byte.b	#%00111111
+     26  f55e		       7f		      .byte.b	#%01111111
+     27  f55f		       ff		      .byte.b	#%11111111
+     28  f560		       ff		      .byte.b	#%11111111
+     29  f561		       ff		      .byte.b	#%11111111
+     30  f562		       ff		      .byte.b	#%11111111
+     31  f563		       ff		      .byte.b	#%11111111
+     32  f564		       ff		      .byte.b	#%11111111
+     33  f565		       3f		      .byte.b	#%00111111
+     34  f566		       ff		      .byte.b	#%11111111
+     35  f567		       7f		      .byte.b	#%01111111
+     36  f568		       7f		      .byte.b	#%01111111
+     37  f569		       3f		      .byte.b	#%00111111
+     38  f56a		       3f		      .byte.b	#%00111111
+     39  f56b		       ff		      .byte.b	#%11111111
+     40  f56c		       ff		      .byte.b	#%11111111
+     41  f56d		       ff		      .byte.b	#%11111111
+     42  f56e		       ff		      .byte.b	#%11111111
+     43  f56f		       ff		      .byte.b	#%11111111
+     44  f570		       ff		      .byte.b	#%11111111
+     45  f571		       ff		      .byte.b	#%11111111
+     46  f572		       ff		      .byte.b	#%11111111
+     47  f573		       ff		      .byte.b	#%11111111
+     48  f574		       ff		      .byte.b	#%11111111
+     49  f575		       ff		      .byte.b	#%11111111
+     50  f576		       ff		      .byte.b	#%11111111
+     51  f577		       ff		      .byte.b	#%11111111
+     52  f578		       ff		      .byte.b	#%11111111
+     53  f579		       ff		      .byte.b	#%11111111
+     54  f57a		       ff		      .byte.b	#%11111111
+     55  f57b		       ff		      .byte.b	#%11111111
+     56  f57c		       ff		      .byte.b	#%11111111
+     57  f57d		       ff		      .byte.b	#%11111111
+     58  f57e		       ff		      .byte.b	#%11111111
+     59  f57f		       ff		      .byte.b	#%11111111
+     60  f580		       0f		      .byte.b	#%00001111
+     61  f581		       0f		      .byte.b	#%00001111
+     62  f582		       0f		      .byte.b	#%00001111
+     63  f583		       1f		      .byte.b	#%00011111
+     64  f584		       1f		      .byte.b	#%00011111
+     65  f585		       00		      .byte.b	#%00000000
+     66  f586		       c0		      .byte.b	#%11000000
+     67  f587		       e0		      .byte.b	#%11100000
+     68  f588		       e0		      .byte.b	#%11100000
+     69  f589		       e0		      .byte.b	#%11100000
+     70  f58a		       c0		      .byte.b	#%11000000
+     71  f58b		       80		      .byte.b	#%10000000
+     72  f58c		       c1		      .byte.b	#%11000001
+     73  f58d		       fb		      .byte.b	#%11111011
+     74  f58e		       ea		      .byte.b	#%11101010
+     75  f58f		       ea		      .byte.b	#%11101010
+     76  f590		       e0		      .byte.b	#%11100000
+     77  f591		       d0		      .byte.b	#%11010000
+     78  f592		       c0		      .byte.b	#%11000000
+     79  f593		       e0		      .byte.b	#%11100000
+     80  f594		       e0		      .byte.b	#%11100000
+     81  f595		       00		      .byte.b	#%00000000
+     82  f596		       10		      .byte.b	#%00010000
+     83  f597		       30		      .byte.b	#%00110000
+     84  f598		       71		      .byte.b	#%01110001
+     85  f599		       f1		      .byte.b	#%11110001
+     86  f59a		       f1		      .byte.b	#%11110001
+     87  f59b		       f0		      .byte.b	#%11110000
+     88  f59c		       70		      .byte.b	#%01110000
+     89  f59d		       70		      .byte.b	#%01110000
+     90  f59e		       10		      .byte.b	#%00010000
+     91  f59f		       f0		      .byte.b	#%11110000
+     92  f5a0		       f1		      .byte.b	#%11110001
+     93  f5a1		       f0		      .byte.b	#%11110000
+     94  f5a2		       f0		      .byte.b	#%11110000
+     95  f5a3		       f0		      .byte.b	#%11110000
+     96  f5a4		       f1		      .byte.b	#%11110001
+     97  f5a5		       80		      .byte.b	#%10000000
+     98  f5a6		       80		      .byte.b	#%10000000
+     99  f5a7		       c0		      .byte.b	#%11000000
+    100  f5a8		       c0		      .byte.b	#%11000000
+    101  f5a9		       c0		      .byte.b	#%11000000
+    102  f5aa		       c0		      .byte.b	#%11000000
+    103  f5ab		       c0		      .byte.b	#%11000000
+    104  f5ac		       c0		      .byte.b	#%11000000
+    105  f5ad		       e0		      .byte.b	#%11100000
+    106  f5ae		       a0		      .byte.b	#%10100000
+    107  f5af		       60		      .byte.b	#%01100000
+    108  f5b0		       70		      .byte.b	#%01110000
+    109  f5b1		       70		      .byte.b	#%01110000
+    110  f5b2		       70		      .byte.b	#%01110000
+    111  f5b3		       60		      .byte.b	#%01100000
+    112  f5b4		       60		      .byte.b	#%01100000
+    113  f5b5		       00		      .byte.b	#%00000000
+    114  f5b6		       40		      .byte.b	#%01000000
+    115  f5b7		       60		      .byte.b	#%01100000
+    116  f5b8		       70		      .byte.b	#%01110000
+    117  f5b9		       70		      .byte.b	#%01110000
+    118  f5ba		       70		      .byte.b	#%01110000
+    119  f5bb		       30		      .byte.b	#%00110000
+    120  f5bc		       10		      .byte.b	#%00010000
+    121  f5bd		       90		      .byte.b	#%10010000
+    122  f5be		       b0		      .byte.b	#%10110000
+    123  f5bf		       f0		      .byte.b	#%11110000
+    124  f5c0		       d0		      .byte.b	#%11010000
+    125  f5c1		       70		      .byte.b	#%01110000
+    126  f5c2		       10		      .byte.b	#%00010000
+    127  f5c3		       10		      .byte.b	#%00010000
+    128  f5c4		       10		      .byte.b	#%00010000
+    129  f5c5		       00		      .byte.b	#%00000000
+    130  f5c6		       00		      .byte.b	#%00000000
+    131  f5c7		       00		      .byte.b	#%00000000
+    132  f5c8		       00		      .byte.b	#%00000000
+    133  f5c9		       00		      .byte.b	#%00000000
+    134  f5ca		       00		      .byte.b	#%00000000
+    135  f5cb		       00		      .byte.b	#%00000000
+    136  f5cc		       0f		      .byte.b	#%00001111
+    137  f5cd		       0f		      .byte.b	#%00001111
+    138  f5ce		       0f		      .byte.b	#%00001111
+    139  f5cf		       0f		      .byte.b	#%00001111
+    140  f5d0		       0f		      .byte.b	#%00001111
+    141  f5d1		       0f		      .byte.b	#%00001111
+    142  f5d2		       0f		      .byte.b	#%00001111
+    143  f5d3		       0f		      .byte.b	#%00001111
+    144  f5d4		       0f		      .byte.b	#%00001111
+    145  f5d5		       f0		      .byte.b	#%11110000
+    146  f5d6		       e0		      .byte.b	#%11100000
+    147  f5d7		       c0		      .byte.b	#%11000000
+    148  f5d8		       c0		      .byte.b	#%11000000
+    149  f5d9		       f0		      .byte.b	#%11110000
+    150  f5da		       f0		      .byte.b	#%11110000
+    151  f5db		       f0		      .byte.b	#%11110000
+    152  f5dc		       f0		      .byte.b	#%11110000
+    153  f5dd		       f0		      .byte.b	#%11110000
+    154  f5de		       e0		      .byte.b	#%11100000
+    155  f5df		       e0		      .byte.b	#%11100000
+    156  f5e0		       c0		      .byte.b	#%11000000
+    157  f5e1		       80		      .byte.b	#%10000000
+    158  f5e2		       c0		      .byte.b	#%11000000
+    159  f5e3		       e0		      .byte.b	#%11100000
+    160  f5e4		       e0		      .byte.b	#%11100000
+    161  f5e5		       ff		      .byte.b	#%11111111
+    162  f5e6		       ff		      .byte.b	#%11111111
+    163  f5e7		       ff		      .byte.b	#%11111111
+    164  f5e8		       ef		      .byte.b	#%11101111
+    165  f5e9		       ef		      .byte.b	#%11101111
+    166  f5ea		       ff		      .byte.b	#%11111111
+    167  f5eb		       ef		      .byte.b	#%11101111
+    168  f5ec		       ef		      .byte.b	#%11101111
+    169  f5ed		       ef		      .byte.b	#%11101111
+    170  f5ee		       ff		      .byte.b	#%11111111
+    171  f5ef		       ef		      .byte.b	#%11101111
+    172  f5f0		       ef		      .byte.b	#%11101111
+    173  f5f1		       ef		      .byte.b	#%11101111
+    174  f5f2		       ef		      .byte.b	#%11101111
+    175  f5f3		       ef		      .byte.b	#%11101111
+    176  f5f4		       cf		      .byte.b	#%11001111
+    177  f5f5		       00		      .byte.b	#%00000000
+    178  f5f6		       00		      .byte.b	#%00000000
+    179  f5f7		       10		      .byte.b	#%00010000
+    180  f5f8		       e0		      .byte.b	#%11100000
+    181  f5f9		       e0		      .byte.b	#%11100000
+    182  f5fa		       e0		      .byte.b	#%11100000
+    183  f5fb		       c0		      .byte.b	#%11000000
+    184  f5fc		       80		      .byte.b	#%10000000
+    185  f5fd		       e0		      .byte.b	#%11100000
+    186  f5fe		       e0		      .byte.b	#%11100000
+    187  f5ff		       e0		      .byte.b	#%11100000
+    188  f600		       f0		      .byte.b	#%11110000
+    189  f601		       d0		      .byte.b	#%11010000
+    190  f602		       f0		      .byte.b	#%11110000
+    191  f603		       e0		      .byte.b	#%11100000
+    192  f604		       e0		      .byte.b	#%11100000
+    193  f605		       ff		      .byte.b	#%11111111
+    194  f606		       ff		      .byte.b	#%11111111
+    195  f607		       ef		      .byte.b	#%11101111
+    196  f608		       cf		      .byte.b	#%11001111
+    197  f609		       8f		      .byte.b	#%10001111
+    198  f60a		       0f		      .byte.b	#%00001111
+    199  f60b		       0f		      .byte.b	#%00001111
+    200  f60c		       0f		      .byte.b	#%00001111
+    201  f60d		       ef		      .byte.b	#%11101111
+    202  f60e		       ef		      .byte.b	#%11101111
+    203  f60f		       0f		      .byte.b	#%00001111
+    204  f610		       0f		      .byte.b	#%00001111
+    205  f611		       3f		      .byte.b	#%00111111
+    206  f612		       1f		      .byte.b	#%00011111
+    207  f613		       3f		      .byte.b	#%00111111
+    208  f614		       3f		      .byte.b	#%00111111
+    209  f615		       ef		      .byte.b	#%11101111
+    210  f616		       cf		      .byte.b	#%11001111
+    211  f617		       0f		      .byte.b	#%00001111
+    212  f618		       3f		      .byte.b	#%00111111
+    213  f619		       7f		      .byte.b	#%01111111
+    214  f61a		       ff		      .byte.b	#%11111111
+    215  f61b		       ff		      .byte.b	#%11111111
+    216  f61c		       ff		      .byte.b	#%11111111
+    217  f61d		       ff		      .byte.b	#%11111111
+    218  f61e		       ff		      .byte.b	#%11111111
+    219  f61f		       ff		      .byte.b	#%11111111
+    220  f620		       ff		      .byte.b	#%11111111
+    221  f621		       ff		      .byte.b	#%11111111
+    222  f622		       ff		      .byte.b	#%11111111
+    223  f623		       ff		      .byte.b	#%11111111
+    224  f624		       ff		      .byte.b	#%11111111
+    225  f625		       00		      .byte.b	#%00000000
+    226  f626		       00		      .byte.b	#%00000000
+    227  f627		       c0		      .byte.b	#%11000000
+    228  f628		       e0		      .byte.b	#%11100000
+    229  f629		       e0		      .byte.b	#%11100000
+    230  f62a		       e0		      .byte.b	#%11100000
+    231  f62b		       f1		      .byte.b	#%11110001
+    232  f62c		       ce		      .byte.b	#%11001110
+    233  f62d		       88		      .byte.b	#%10001000
+    234  f62e		       88		      .byte.b	#%10001000
+    235  f62f		       88		      .byte.b	#%10001000
+    236  f630		       88		      .byte.b	#%10001000
+    237  f631		       88		      .byte.b	#%10001000
+    238  f632		       c8		      .byte.b	#%11001000
+    239  f633		       e8		      .byte.b	#%11101000
+    240  f634		       e8		      .byte.b	#%11101000
+    241  f635		       1f		      .byte.b	#%00011111
+    242  f636		       3f		      .byte.b	#%00111111
+    243  f637		       3f		      .byte.b	#%00111111
+    244  f638		       3f		      .byte.b	#%00111111
+    245  f639		       3f		      .byte.b	#%00111111
+    246  f63a		       9f		      .byte.b	#%10011111
+    247  f63b		       9f		      .byte.b	#%10011111
+    248  f63c		       4f		      .byte.b	#%01001111
+    249  f63d		       6f		      .byte.b	#%01101111
+    250  f63e		       6f		      .byte.b	#%01101111
+    251  f63f		       6f		      .byte.b	#%01101111
+    252  f640		       ef		      .byte.b	#%11101111
+    253  f641		       ff		      .byte.b	#%11111111
+    254  f642		       ff		      .byte.b	#%11111111
+    255  f643		       ff		      .byte.b	#%11111111
+    256  f644		       ff		      .byte.b	#%11111111
+    257  f645
+    258  f645		       00	   SCREEN_1_DATA_0 .byte.b	#%00000000
+    259  f646		       00		      .byte.b	#%00000000
+    260  f647		       00		      .byte.b	#%00000000
+    261  f648		       00		      .byte.b	#%00000000
+    262  f649		       00		      .byte.b	#%00000000
+    263  f64a		       00		      .byte.b	#%00000000
+    264  f64b		       00		      .byte.b	#%00000000
+    265  f64c		       00		      .byte.b	#%00000000
+    266  f64d		       00		      .byte.b	#%00000000
+    267  f64e		       00		      .byte.b	#%00000000
+    268  f64f		       00		      .byte.b	#%00000000
+    269  f650		       00		      .byte.b	#%00000000
+    270  f651		       00		      .byte.b	#%00000000
+    271  f652		       00		      .byte.b	#%00000000
+    272  f653		       00		      .byte.b	#%00000000
+    273  f654		       00		      .byte.b	#%00000000
+    274  f655		       ff		      .byte.b	#%11111111
+    275  f656		       ff		      .byte.b	#%11111111
+    276  f657		       ff		      .byte.b	#%11111111
+    277  f658		       ef		      .byte.b	#%11101111
+    278  f659		       8f		      .byte.b	#%10001111
+    279  f65a		       0f		      .byte.b	#%00001111
+    280  f65b		       0f		      .byte.b	#%00001111
+    281  f65c		       0f		      .byte.b	#%00001111
+    282  f65d		       8f		      .byte.b	#%10001111
+    283  f65e		       bf		      .byte.b	#%10111111
+    284  f65f		       ff		      .byte.b	#%11111111
+    285  f660		       ff		      .byte.b	#%11111111
+    286  f661		       ff		      .byte.b	#%11111111
+    287  f662		       ff		      .byte.b	#%11111111
+    288  f663		       ff		      .byte.b	#%11111111
+    289  f664		       ff		      .byte.b	#%11111111
+    290  f665		       0f		      .byte.b	#%00001111
+    291  f666		       0f		      .byte.b	#%00001111
+    292  f667		       2f		      .byte.b	#%00101111
+    293  f668		       ef		      .byte.b	#%11101111
+    294  f669		       ff		      .byte.b	#%11111111
+    295  f66a		       ff		      .byte.b	#%11111111
+    296  f66b		       ff		      .byte.b	#%11111111
+    297  f66c		       ff		      .byte.b	#%11111111
+    298  f66d		       ff		      .byte.b	#%11111111
+    299  f66e		       ff		      .byte.b	#%11111111
+    300  f66f		       ff		      .byte.b	#%11111111
+    301  f670		       ff		      .byte.b	#%11111111
+    302  f671		       ff		      .byte.b	#%11111111
+    303  f672		       ff		      .byte.b	#%11111111
+    304  f673		       ff		      .byte.b	#%11111111
+    305  f674		       ff		      .byte.b	#%11111111
+    306  f675		       ff		      .byte.b	#%11111111
+    307  f676		       ff		      .byte.b	#%11111111
+    308  f677		       ff		      .byte.b	#%11111111
+    309  f678		       ff		      .byte.b	#%11111111
+    310  f679		       ff		      .byte.b	#%11111111
+    311  f67a		       ff		      .byte.b	#%11111111
+    312  f67b		       ff		      .byte.b	#%11111111
+    313  f67c		       ff		      .byte.b	#%11111111
+    314  f67d		       ff		      .byte.b	#%11111111
+    315  f67e		       ff		      .byte.b	#%11111111
+    316  f67f		       ff		      .byte.b	#%11111111
+    317  f680		       c7		      .byte.b	#%11000111
+    318  f681		       c7		      .byte.b	#%11000111
+    319  f682		       ef		      .byte.b	#%11101111
+    320  f683		       ef		      .byte.b	#%11101111
+    321  f684		       ff		      .byte.b	#%11111111
+    322  f685		       00		      .byte.b	#%00000000
+    323  f686		       30		      .byte.b	#%00110000
+    324  f687		       f0		      .byte.b	#%11110000
+    325  f688		       f0		      .byte.b	#%11110000
+    326  f689		       f0		      .byte.b	#%11110000
+    327  f68a		       f0		      .byte.b	#%11110000
+    328  f68b		       b0		      .byte.b	#%10110000
+    329  f68c		       30		      .byte.b	#%00110000
+    330  f68d		       7f		      .byte.b	#%01111111
+    331  f68e		       7f		      .byte.b	#%01111111
+    332  f68f		       7d		      .byte.b	#%01111101
+    333  f690		       70		      .byte.b	#%01110000
+    334  f691		       b8		      .byte.b	#%10111000
+    335  f692		       36		      .byte.b	#%00110110
+    336  f693		       71		      .byte.b	#%01110001
+    337  f694		       70		      .byte.b	#%01110000
+    338  f695		       00		      .byte.b	#%00000000
+    339  f696		       08		      .byte.b	#%00001000
+    340  f697		       0e		      .byte.b	#%00001110
+    341  f698		       0f		      .byte.b	#%00001111
+    342  f699		       1f		      .byte.b	#%00011111
+    343  f69a		       0f		      .byte.b	#%00001111
+    344  f69b		       0f		      .byte.b	#%00001111
+    345  f69c		       0f		      .byte.b	#%00001111
+    346  f69d		       0f		      .byte.b	#%00001111
+    347  f69e		       0f		      .byte.b	#%00001111
+    348  f69f		       0e		      .byte.b	#%00001110
+    349  f6a0		       ff		      .byte.b	#%11111111
+    350  f6a1		       ff		      .byte.b	#%11111111
+    351  f6a2		       ff		      .byte.b	#%11111111
+    352  f6a3		       ff		      .byte.b	#%11111111
+    353  f6a4		       ff		      .byte.b	#%11111111
+    354  f6a5		       f0		      .byte.b	#%11110000
+    355  f6a6		       f0		      .byte.b	#%11110000
+    356  f6a7		       f0		      .byte.b	#%11110000
+    357  f6a8		       f0		      .byte.b	#%11110000
+    358  f6a9		       f0		      .byte.b	#%11110000
+    359  f6aa		       f0		      .byte.b	#%11110000
+    360  f6ab		       f0		      .byte.b	#%11110000
+    361  f6ac		       f0		      .byte.b	#%11110000
+    362  f6ad		       f0		      .byte.b	#%11110000
+    363  f6ae		       f0		      .byte.b	#%11110000
+    364  f6af		       e0		      .byte.b	#%11100000
+    365  f6b0		       e0		      .byte.b	#%11100000
+    366  f6b1		       e0		      .byte.b	#%11100000
+    367  f6b2		       e0		      .byte.b	#%11100000
+    368  f6b3		       e0		      .byte.b	#%11100000
+    369  f6b4		       e0		      .byte.b	#%11100000
+    370  f6b5		       00		      .byte.b	#%00000000
+    371  f6b6		       00		      .byte.b	#%00000000
+    372  f6b7		       20		      .byte.b	#%00100000
+    373  f6b8		       c8		      .byte.b	#%11001000
+    374  f6b9		       ec		      .byte.b	#%11101100
+    375  f6ba		       ec		      .byte.b	#%11101100
+    376  f6bb		       cc		      .byte.b	#%11001100
+    377  f6bc		       8e		      .byte.b	#%10001110
+    378  f6bd		       9e		      .byte.b	#%10011110
+    379  f6be		       de		      .byte.b	#%11011110
+    380  f6bf		       fe		      .byte.b	#%11111110
+    381  f6c0		       fe		      .byte.b	#%11111110
+    382  f6c1		       ce		      .byte.b	#%11001110
+    383  f6c2		       8e		      .byte.b	#%10001110
+    384  f6c3		       0f		      .byte.b	#%00001111
+    385  f6c4		       0f		      .byte.b	#%00001111
+    386  f6c5		       00		      .byte.b	#%00000000
+    387  f6c6		       00		      .byte.b	#%00000000
+    388  f6c7		       00		      .byte.b	#%00000000
+    389  f6c8		       00		      .byte.b	#%00000000
+    390  f6c9		       00		      .byte.b	#%00000000
+    391  f6ca		       00		      .byte.b	#%00000000
+    392  f6cb		       00		      .byte.b	#%00000000
+    393  f6cc		       00		      .byte.b	#%00000000
+    394  f6cd		       01		      .byte.b	#%00000001
+    395  f6ce		       03		      .byte.b	#%00000011
+    396  f6cf		       01		      .byte.b	#%00000001
+    397  f6d0		       03		      .byte.b	#%00000011
+    398  f6d1		       03		      .byte.b	#%00000011
+    399  f6d2		       07		      .byte.b	#%00000111
+    400  f6d3		       03		      .byte.b	#%00000011
+    401  f6d4		       83		      .byte.b	#%10000011
+    402  f6d5		       08		      .byte.b	#%00001000
+    403  f6d6		       10		      .byte.b	#%00010000
+    404  f6d7		       10		      .byte.b	#%00010000
+    405  f6d8		       70		      .byte.b	#%01110000
+    406  f6d9		       f0		      .byte.b	#%11110000
+    407  f6da		       f0		      .byte.b	#%11110000
+    408  f6db		       f8		      .byte.b	#%11111000
+    409  f6dc		       f8		      .byte.b	#%11111000
+    410  f6dd		       f0		      .byte.b	#%11110000
+    411  f6de		       f0		      .byte.b	#%11110000
+    412  f6df		       f0		      .byte.b	#%11110000
+    413  f6e0		       f0		      .byte.b	#%11110000
+    414  f6e1		       f0		      .byte.b	#%11110000
+    415  f6e2		       f0		      .byte.b	#%11110000
+    416  f6e3		       f0		      .byte.b	#%11110000
+    417  f6e4		       f0		      .byte.b	#%11110000
+    418  f6e5		       ff		      .byte.b	#%11111111
+    419  f6e6		       ff		      .byte.b	#%11111111
+    420  f6e7		       ff		      .byte.b	#%11111111
+    421  f6e8		       f7		      .byte.b	#%11110111
+    422  f6e9		       f3		      .byte.b	#%11110011
+    423  f6ea		       f7		      .byte.b	#%11110111
+    424  f6eb		       f3		      .byte.b	#%11110011
+    425  f6ec		       73		      .byte.b	#%01110011
+    426  f6ed		       33		      .byte.b	#%00110011
+    427  f6ee		       f3		      .byte.b	#%11110011
+    428  f6ef		       71		      .byte.b	#%01110001
+    429  f6f0		       31		      .byte.b	#%00110001
+    430  f6f1		       f1		      .byte.b	#%11110001
+    431  f6f2		       f1		      .byte.b	#%11110001
+    432  f6f3		       f1		      .byte.b	#%11110001
+    433  f6f4		       f1		      .byte.b	#%11110001
+    434  f6f5		       00		      .byte.b	#%00000000
+    435  f6f6		       00		      .byte.b	#%00000000
+    436  f6f7		       30		      .byte.b	#%00110000
+    437  f6f8		       f0		      .byte.b	#%11110000
+    438  f6f9		       30		      .byte.b	#%00110000
+    439  f6fa		       30		      .byte.b	#%00110000
+    440  f6fb		       70		      .byte.b	#%01110000
+    441  f6fc		       70		      .byte.b	#%01110000
+    442  f6fd		       70		      .byte.b	#%01110000
+    443  f6fe		       f0		      .byte.b	#%11110000
+    444  f6ff		       f0		      .byte.b	#%11110000
+    445  f700		       f0		      .byte.b	#%11110000
+    446  f701		       f0		      .byte.b	#%11110000
+    447  f702		       f0		      .byte.b	#%11110000
+    448  f703		       f8		      .byte.b	#%11111000
+    449  f704		       78		      .byte.b	#%01111000
+    450  f705		       ff		      .byte.b	#%11111111
+    451  f706		       ff		      .byte.b	#%11111111
+    452  f707		       f3		      .byte.b	#%11110011
+    453  f708		       f1		      .byte.b	#%11110001
+    454  f709		       f1		      .byte.b	#%11110001
+    455  f70a		       01		      .byte.b	#%00000001
+    456  f70b		       07		      .byte.b	#%00000111
+    457  f70c		       07		      .byte.b	#%00000111
+    458  f70d		       03		      .byte.b	#%00000011
+    459  f70e		       07		      .byte.b	#%00000111
+    460  f70f		       07		      .byte.b	#%00000111
+    461  f710		       0f		      .byte.b	#%00001111
+    462  f711		       0f		      .byte.b	#%00001111
+    463  f712		       2f		      .byte.b	#%00101111
+    464  f713		       6f		      .byte.b	#%01101111
+    465  f714		       2f		      .byte.b	#%00101111
+    466  f715		       f3		      .byte.b	#%11110011
+    467  f716		       f3		      .byte.b	#%11110011
+    468  f717		       ef		      .byte.b	#%11101111
+    469  f718		       0f		      .byte.b	#%00001111
+    470  f719		       0f		      .byte.b	#%00001111
+    471  f71a		       1f		      .byte.b	#%00011111
+    472  f71b		       ff		      .byte.b	#%11111111
+    473  f71c		       ff		      .byte.b	#%11111111
+    474  f71d		       ff		      .byte.b	#%11111111
+    475  f71e		       ff		      .byte.b	#%11111111
+    476  f71f		       ff		      .byte.b	#%11111111
+    477  f720		       ff		      .byte.b	#%11111111
+    478  f721		       ff		      .byte.b	#%11111111
+    479  f722		       ff		      .byte.b	#%11111111
+    480  f723		       ff		      .byte.b	#%11111111
+    481  f724		       ff		      .byte.b	#%11111111
+    482  f725		       00		      .byte.b	#%00000000
+    483  f726		       00		      .byte.b	#%00000000
+    484  f727		       30		      .byte.b	#%00110000
+    485  f728		       30		      .byte.b	#%00110000
+    486  f729		       30		      .byte.b	#%00110000
+    487  f72a		       30		      .byte.b	#%00110000
+    488  f72b		       1f		      .byte.b	#%00011111
+    489  f72c		       30		      .byte.b	#%00110000
+    490  f72d		       f0		      .byte.b	#%11110000
+    491  f72e		       70		      .byte.b	#%01110000
+    492  f72f		       70		      .byte.b	#%01110000
+    493  f730		       f0		      .byte.b	#%11110000
+    494  f731		       30		      .byte.b	#%00110000
+    495  f732		       30		      .byte.b	#%00110000
+    496  f733		       30		      .byte.b	#%00110000
+    497  f734		       30		      .byte.b	#%00110000
+    498  f735		       0f		      .byte.b	#%00001111
+    499  f736		       0f		      .byte.b	#%00001111
+    500  f737		       0f		      .byte.b	#%00001111
+    501  f738		       0f		      .byte.b	#%00001111
+    502  f739		       0f		      .byte.b	#%00001111
+    503  f73a		       0f		      .byte.b	#%00001111
+    504  f73b		       0f		      .byte.b	#%00001111
+    505  f73c		       0f		      .byte.b	#%00001111
+    506  f73d		       0f		      .byte.b	#%00001111
+    507  f73e		       cf		      .byte.b	#%11001111
+    508  f73f		       f7		      .byte.b	#%11110111
+    509  f740		       f7		      .byte.b	#%11110111
+    510  f741		       ff		      .byte.b	#%11111111
+    511  f742		       ff		      .byte.b	#%11111111
+    512  f743		       ff		      .byte.b	#%11111111
+    513  f744		       ff		      .byte.b	#%11111111
+    514  f745
+    515  f745		       00	   SCREEN_2_DATA_0 .byte.b	#%00000000
+    516  f746		       00		      .byte.b	#%00000000
+    517  f747		       00		      .byte.b	#%00000000
+    518  f748		       00		      .byte.b	#%00000000
+    519  f749		       00		      .byte.b	#%00000000
+    520  f74a		       00		      .byte.b	#%00000000
+    521  f74b		       00		      .byte.b	#%00000000
+    522  f74c		       00		      .byte.b	#%00000000
+    523  f74d		       00		      .byte.b	#%00000000
+    524  f74e		       00		      .byte.b	#%00000000
+    525  f74f		       00		      .byte.b	#%00000000
+    526  f750		       00		      .byte.b	#%00000000
+    527  f751		       00		      .byte.b	#%00000000
+    528  f752		       00		      .byte.b	#%00000000
+    529  f753		       00		      .byte.b	#%00000000
+    530  f754		       00		      .byte.b	#%00000000
+    531  f755		       ff		      .byte.b	#%11111111
+    532  f756		       ff		      .byte.b	#%11111111
+    533  f757		       ff		      .byte.b	#%11111111
+    534  f758		       ff		      .byte.b	#%11111111
+    535  f759		       ff		      .byte.b	#%11111111
+    536  f75a		       ff		      .byte.b	#%11111111
+    537  f75b		       ff		      .byte.b	#%11111111
+    538  f75c		       ff		      .byte.b	#%11111111
+    539  f75d		       ff		      .byte.b	#%11111111
+    540  f75e		       ff		      .byte.b	#%11111111
+    541  f75f		       ff		      .byte.b	#%11111111
+    542  f760		       ff		      .byte.b	#%11111111
+    543  f761		       ff		      .byte.b	#%11111111
+    544  f762		       ff		      .byte.b	#%11111111
+    545  f763		       ff		      .byte.b	#%11111111
+    546  f764		       ff		      .byte.b	#%11111111
+    547  f765		       00		      .byte.b	#%00000000
+    548  f766		       00		      .byte.b	#%00000000
+    549  f767		       00		      .byte.b	#%00000000
+    550  f768		       00		      .byte.b	#%00000000
+    551  f769		       c0		      .byte.b	#%11000000
+    552  f76a		       f0		      .byte.b	#%11110000
+    553  f76b		       f8		      .byte.b	#%11111000
+    554  f76c		       fe		      .byte.b	#%11111110
+    555  f76d		       ff		      .byte.b	#%11111111
+    556  f76e		       ff		      .byte.b	#%11111111
+    557  f76f		       ff		      .byte.b	#%11111111
+    558  f770		       ff		      .byte.b	#%11111111
+    559  f771		       ff		      .byte.b	#%11111111
+    560  f772		       ff		      .byte.b	#%11111111
+    561  f773		       ff		      .byte.b	#%11111111
+    562  f774		       ff		      .byte.b	#%11111111
+    563  f775		       ff		      .byte.b	#%11111111
+    564  f776		       ff		      .byte.b	#%11111111
+    565  f777		       ff		      .byte.b	#%11111111
+    566  f778		       ff		      .byte.b	#%11111111
+    567  f779		       ff		      .byte.b	#%11111111
+    568  f77a		       ff		      .byte.b	#%11111111
+    569  f77b		       ff		      .byte.b	#%11111111
+    570  f77c		       ff		      .byte.b	#%11111111
+    571  f77d		       ff		      .byte.b	#%11111111
+    572  f77e		       ff		      .byte.b	#%11111111
+    573  f77f		       ff		      .byte.b	#%11111111
+    574  f780		       ff		      .byte.b	#%11111111
+    575  f781		       ff		      .byte.b	#%11111111
+    576  f782		       ff		      .byte.b	#%11111111
+    577  f783		       ff		      .byte.b	#%11111111
+    578  f784		       ff		      .byte.b	#%11111111
+    579  f785		       00		      .byte.b	#%00000000
+    580  f786		       00		      .byte.b	#%00000000
+    581  f787		       00		      .byte.b	#%00000000
+    582  f788		       80		      .byte.b	#%10000000
+    583  f789		       00		      .byte.b	#%00000000
+    584  f78a		       80		      .byte.b	#%10000000
+    585  f78b		       80		      .byte.b	#%10000000
+    586  f78c		       04		      .byte.b	#%00000100
+    587  f78d		       2a		      .byte.b	#%00101010
+    588  f78e		       b4		      .byte.b	#%10110100
+    589  f78f		       d5		      .byte.b	#%11010101
+    590  f790		       40		      .byte.b	#%01000000
+    591  f791		       80		      .byte.b	#%10000000
+    592  f792		       60		      .byte.b	#%01100000
+    593  f793		       18		      .byte.b	#%00011000
+    594  f794		       00		      .byte.b	#%00000000
+    595  f795		       00		      .byte.b	#%00000000
+    596  f796		       00		      .byte.b	#%00000000
+    597  f797		       00		      .byte.b	#%00000000
+    598  f798		       00		      .byte.b	#%00000000
+    599  f799		       00		      .byte.b	#%00000000
+    600  f79a		       00		      .byte.b	#%00000000
+    601  f79b		       00		      .byte.b	#%00000000
+    602  f79c		       00		      .byte.b	#%00000000
+    603  f79d		       00		      .byte.b	#%00000000
+    604  f79e		       00		      .byte.b	#%00000000
+    605  f79f		       00		      .byte.b	#%00000000
+    606  f7a0		       80		      .byte.b	#%10000000
+    607  f7a1		       e0		      .byte.b	#%11100000
+    608  f7a2		       f0		      .byte.b	#%11110000
+    609  f7a3		       f8		      .byte.b	#%11111000
+    610  f7a4		       fc		      .byte.b	#%11111100
+    611  f7a5		       ff		      .byte.b	#%11111111
+    612  f7a6		       ff		      .byte.b	#%11111111
+    613  f7a7		       ff		      .byte.b	#%11111111
+    614  f7a8		       ff		      .byte.b	#%11111111
+    615  f7a9		       ff		      .byte.b	#%11111111
+    616  f7aa		       ff		      .byte.b	#%11111111
+    617  f7ab		       ff		      .byte.b	#%11111111
+    618  f7ac		       ff		      .byte.b	#%11111111
+    619  f7ad		       ff		      .byte.b	#%11111111
+    620  f7ae		       ff		      .byte.b	#%11111111
+    621  f7af		       ff		      .byte.b	#%11111111
+    622  f7b0		       ff		      .byte.b	#%11111111
+    623  f7b1		       ff		      .byte.b	#%11111111
+    624  f7b2		       ff		      .byte.b	#%11111111
+    625  f7b3		       ff		      .byte.b	#%11111111
+    626  f7b4		       ff		      .byte.b	#%11111111
+    627  f7b5		       00		      .byte.b	#%00000000
+    628  f7b6		       00		      .byte.b	#%00000000
+    629  f7b7		       00		      .byte.b	#%00000000
+    630  f7b8		       80		      .byte.b	#%10000000
+    631  f7b9		       c0		      .byte.b	#%11000000
+    632  f7ba		       c0		      .byte.b	#%11000000
+    633  f7bb		       c0		      .byte.b	#%11000000
+    634  f7bc		       e0		      .byte.b	#%11100000
+    635  f7bd		       e0		      .byte.b	#%11100000
+    636  f7be		       e0		      .byte.b	#%11100000
+    637  f7bf		       e0		      .byte.b	#%11100000
+    638  f7c0		       e0		      .byte.b	#%11100000
+    639  f7c1		       c0		      .byte.b	#%11000000
+    640  f7c2		       f0		      .byte.b	#%11110000
+    641  f7c3		       fc		      .byte.b	#%11111100
+    642  f7c4		       fe		      .byte.b	#%11111110
+    643  f7c5		       00		      .byte.b	#%00000000
+    644  f7c6		       00		      .byte.b	#%00000000
+    645  f7c7		       00		      .byte.b	#%00000000
+    646  f7c8		       00		      .byte.b	#%00000000
+    647  f7c9		       00		      .byte.b	#%00000000
+    648  f7ca		       00		      .byte.b	#%00000000
+    649  f7cb		       00		      .byte.b	#%00000000
+    650  f7cc		       00		      .byte.b	#%00000000
+    651  f7cd		       00		      .byte.b	#%00000000
+    652  f7ce		       00		      .byte.b	#%00000000
+    653  f7cf		       00		      .byte.b	#%00000000
+    654  f7d0		       00		      .byte.b	#%00000000
+    655  f7d1		       00		      .byte.b	#%00000000
+    656  f7d2		       00		      .byte.b	#%00000000
+    657  f7d3		       00		      .byte.b	#%00000000
+    658  f7d4		       c0		      .byte.b	#%11000000
+    659  f7d5		       00		      .byte.b	#%00000000
+    660  f7d6		       00		      .byte.b	#%00000000
+    661  f7d7		       00		      .byte.b	#%00000000
+    662  f7d8		       00		      .byte.b	#%00000000
+    663  f7d9		       80		      .byte.b	#%10000000
+    664  f7da		       c0		      .byte.b	#%11000000
+    665  f7db		       c0		      .byte.b	#%11000000
+    666  f7dc		       c0		      .byte.b	#%11000000
+    667  f7dd		       e0		      .byte.b	#%11100000
+    668  f7de		       e0		      .byte.b	#%11100000
+    669  f7df		       e0		      .byte.b	#%11100000
+    670  f7e0		       e0		      .byte.b	#%11100000
+    671  f7e1		       e0		      .byte.b	#%11100000
+    672  f7e2		       f0		      .byte.b	#%11110000
+    673  f7e3		       f0		      .byte.b	#%11110000
+    674  f7e4		       f8		      .byte.b	#%11111000
+    675  f7e5		       ff		      .byte.b	#%11111111
+    676  f7e6		       ff		      .byte.b	#%11111111
+    677  f7e7		       ff		      .byte.b	#%11111111
+    678  f7e8		       ff		      .byte.b	#%11111111
+    679  f7e9		       ff		      .byte.b	#%11111111
+    680  f7ea		       ff		      .byte.b	#%11111111
+    681  f7eb		       7f		      .byte.b	#%01111111
+    682  f7ec		       1f		      .byte.b	#%00011111
+    683  f7ed		       1f		      .byte.b	#%00011111
+    684  f7ee		       3f		      .byte.b	#%00111111
+    685  f7ef		       3f		      .byte.b	#%00111111
+    686  f7f0		       0f		      .byte.b	#%00001111
+    687  f7f1		       37		      .byte.b	#%00110111
+    688  f7f2		       3f		      .byte.b	#%00111111
+    689  f7f3		       1f		      .byte.b	#%00011111
+    690  f7f4		       3f		      .byte.b	#%00111111
+    691  f7f5		       00		      .byte.b	#%00000000
+    692  f7f6		       00		      .byte.b	#%00000000
+    693  f7f7		       00		      .byte.b	#%00000000
+    694  f7f8		       00		      .byte.b	#%00000000
+    695  f7f9		       00		      .byte.b	#%00000000
+    696  f7fa		       00		      .byte.b	#%00000000
+    697  f7fb		       00		      .byte.b	#%00000000
+    698  f7fc		       00		      .byte.b	#%00000000
+    699  f7fd		       00		      .byte.b	#%00000000
+    700  f7fe		       00		      .byte.b	#%00000000
+    701  f7ff		       80		      .byte.b	#%10000000
+    702  f800		       80		      .byte.b	#%10000000
+    703  f801		       c0		      .byte.b	#%11000000
+    704  f802		       80		      .byte.b	#%10000000
+    705  f803		       00		      .byte.b	#%00000000
+    706  f804		       00		      .byte.b	#%00000000
+    707  f805		       ff		      .byte.b	#%11111111
+    708  f806		       ff		      .byte.b	#%11111111
+    709  f807		       f7		      .byte.b	#%11110111
+    710  f808		       e7		      .byte.b	#%11100111
+    711  f809		       8f		      .byte.b	#%10001111
+    712  f80a		       3f		      .byte.b	#%00111111
+    713  f80b		       1f		      .byte.b	#%00011111
+    714  f80c		       1f		      .byte.b	#%00011111
+    715  f80d		       3f		      .byte.b	#%00111111
+    716  f80e		       7f		      .byte.b	#%01111111
+    717  f80f		       7f		      .byte.b	#%01111111
+    718  f810		       ff		      .byte.b	#%11111111
+    719  f811		       ff		      .byte.b	#%11111111
+    720  f812		       7f		      .byte.b	#%01111111
+    721  f813		       3f		      .byte.b	#%00111111
+    722  f814		       7f		      .byte.b	#%01111111
+    723  f815		       ff		      .byte.b	#%11111111
+    724  f816		       ff		      .byte.b	#%11111111
+    725  f817		       ff		      .byte.b	#%11111111
+    726  f818		       ff		      .byte.b	#%11111111
+    727  f819		       00		      .byte.b	#%00000000
+    728  f81a		       00		      .byte.b	#%00000000
+    729  f81b		       00		      .byte.b	#%00000000
+    730  f81c		       80		      .byte.b	#%10000000
+    731  f81d		       f8		      .byte.b	#%11111000
+    732  f81e		       fe		      .byte.b	#%11111110
+    733  f81f		       ff		      .byte.b	#%11111111
+    734  f820		       ff		      .byte.b	#%11111111
+    735  f821		       ff		      .byte.b	#%11111111
+    736  f822		       ff		      .byte.b	#%11111111
+    737  f823		       ff		      .byte.b	#%11111111
+    738  f824		       ff		      .byte.b	#%11111111
+    739  f825		       00		      .byte.b	#%00000000
+    740  f826		       00		      .byte.b	#%00000000
+    741  f827		       00		      .byte.b	#%00000000
+    742  f828		       00		      .byte.b	#%00000000
+    743  f829		       00		      .byte.b	#%00000000
+    744  f82a		       00		      .byte.b	#%00000000
+    745  f82b		       00		      .byte.b	#%00000000
+    746  f82c		       00		      .byte.b	#%00000000
+    747  f82d		       00		      .byte.b	#%00000000
+    748  f82e		       c0		      .byte.b	#%11000000
+    749  f82f		       e0		      .byte.b	#%11100000
+    750  f830		       d0		      .byte.b	#%11010000
+    751  f831		       08		      .byte.b	#%00001000
+    752  f832		       04		      .byte.b	#%00000100
+    753  f833		       04		      .byte.b	#%00000100
+    754  f834		       03		      .byte.b	#%00000011
+    755  f835		       7c		      .byte.b	#%01111100
+    756  f836		       fc		      .byte.b	#%11111100
+    757  f837		       fc		      .byte.b	#%11111100
+    758  f838		       7c		      .byte.b	#%01111100
+    759  f839		       7c		      .byte.b	#%01111100
+    760  f83a		       dc		      .byte.b	#%11011100
+    761  f83b		       1c		      .byte.b	#%00011100
+    762  f83c		       1c		      .byte.b	#%00011100
+    763  f83d		       1c		      .byte.b	#%00011100
+    764  f83e		       7c		      .byte.b	#%01111100
+    765  f83f		       fc		      .byte.b	#%11111100
+    766  f840		       fc		      .byte.b	#%11111100
+    767  f841		       fc		      .byte.b	#%11111100
+    768  f842		       fc		      .byte.b	#%11111100
+    769  f843		       fc		      .byte.b	#%11111100
+    770  f844		       fc		      .byte.b	#%11111100
+------- FILE bad_apple.asm
+    284  f845
+    285  f845							;------------------------------------------------------------------------
+    286  f845							;  ___ 	_ 
+    287  f845							; | __|_ _  __| |
+    288  f845							; | _|| ' \/ _` |
+    289  f845							; |___|_||_\__,_|
+    290  f845							;------------------------------------------------------------------------	    
+    291  f845
+    292  fffa					      org	$fffa
+    293  fffa
+    294  fffa				   interruptVectors
+    295  fffa		       00 f0		      .word.w	reset	; nmi
+    296  fffc		       00 f0		      .word.w	reset	; reset
+    297  fffe		       00 f0		      .word.w	reset	; irq
